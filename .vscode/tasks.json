@@ -1,0 +1,16 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Run Web (port 5000)",
+      "type": "shell",
+      "command": "flutter run -d chrome --web-port 5000",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "isBackground": true,
+      "problemMatcher": []
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "project_info": {
+    "project_number": "553825765711",
+    "firebase_url": "https://taskfight-c4a80-default-rtdb.europe-west1.firebasedatabase.app",
+    "project_id": "taskfight-c4a80",
+    "storage_bucket": "taskfight-c4a80.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:553825765711:android:8a1f1d2dbdec03adfa5d3a",
+        "android_client_info": {
+          "package_name": "com.example.fight_task_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBbYQRrAIZP_jTYqSwCT1GxuuLCb7Zz92I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:553825765711:android:752f6ca3142461cffa5d3a",
+        "android_client_info": {
+          "package_name": "com.masen.taskfight"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBbYQRrAIZP_jTYqSwCT1GxuuLCb7Zz92I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

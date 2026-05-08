@@ -1,0 +1,61 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Users ──────────────────────────────────────────────────────────────
+    // Any authenticated user can READ any user profile (Members screen, Arena).
+    // Owner can write everything on their own document.
+    // Any authenticated user can update only HP/attack fields on another user's
+    // document (needed for damage dealt by completing tasks).
+    match /users/{userId} {
+      allow read: if request.auth != null;
+
+      // Full write only for the owner
+      allow create, delete: if request.auth != null && request.auth.uid == userId;
+
+      allow update: if request.auth != null && (
+        // Owner can update any field on their own document
+        request.auth.uid == userId
+        ||
+        // Other authenticated users can only touch per-league HP fields (damage)
+        // and the attacker's daily-attack counters.
+        // affectedKeys() returns top-level keys even when using dot notation.
+        request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly([
+              'hpByLeague',
+              'lastHpResetByLeague',
+              'todayAttacks',
+              'lastAttackDate',
+              'coins',
+              'todayCoins',
+              'lastCoinDate'
+            ])
+      );
+    }
+
+    // ── Leagues ────────────────────────────────────────────────────────────
+    // Any authenticated user can read leagues (needed for join-by-code query).
+    // Only league members can update (e.g. joining). Only the owner can delete.
+    match /leagues/{leagueId} {
+      allow read:   if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null
+                    && request.auth.uid in resource.data.memberIds;
+      allow delete: if request.auth != null
+                    && request.auth.uid == resource.data.ownerId;
+    }
+
+    // ── Tasks ──────────────────────────────────────────────────────────────
+    // Only league members can read/write tasks.
+    match /leagues/{leagueId}/tasks/{taskId} {
+      allow read, write: if request.auth != null
+                         && request.auth.uid in get(/databases/$(database)/documents/leagues/$(leagueId)).data.memberIds;
+    }
+
+    // ── Task events (history) ──────────────────────────────────────────────
+    match /leagues/{leagueId}/events/{eventId} {
+      allow read, write: if request.auth != null
+                         && request.auth.uid in get(/databases/$(database)/documents/leagues/$(leagueId)).data.memberIds;
+    }
+  }
+}
