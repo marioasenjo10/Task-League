@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/league_providers.dart';
 import '../models/league_model.dart';
-import '../repositories/league_repository.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../auth/models/user_model.dart';
 import '../../history/providers/history_providers.dart';
@@ -26,9 +25,6 @@ class LeagueScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final leagueAsync = ref.watch(leagueProvider(leagueId));
     final currentUser = ref.watch(currentUserProvider).valueOrNull;
-    final currentUid = ref.watch(authStateProvider).valueOrNull?.uid ?? '';
-
-    // Unseen attack count for the bell badge
     final unseenAsync = ref.watch(unseenAttackCountProvider(leagueId));
     final unseenCount = unseenAsync.valueOrNull ?? 0;
 
@@ -85,27 +81,6 @@ class LeagueScreen extends ConsumerWidget {
             tooltip: context.tr('profile'),
             onPressed: () => context.push('/profile'),
           ),
-          // ── Overflow menu ────────────────────────────────────────────
-          PopupMenuButton<_LeagueMenuAction>(
-            onSelected: (action) async {
-              if (action == _LeagueMenuAction.leave) {
-                await _confirmLeave(context, ref, leagueId, currentUid);
-              }
-            },
-            itemBuilder: (ctx) => [
-              PopupMenuItem(
-                value: _LeagueMenuAction.leave,
-                child: Row(
-                  children: [
-                    const Icon(Icons.exit_to_app, color: Colors.redAccent, size: 20),
-                    const SizedBox(width: 10),
-                    Text(context.tr('leaveLeague'),
-                        style: const TextStyle(color: Colors.redAccent)),
-                  ],
-                ),
-              ),
-            ],
-          ),
         ],
       ),
       body: leagueAsync.when(
@@ -144,68 +119,7 @@ class LeagueScreen extends ConsumerWidget {
       builder: (ctx) => _NotificationsSheet(leagueId: leagueId),
     );
   }
-
-  Future<void> _confirmLeave(
-    BuildContext context,
-    WidgetRef ref,
-    String leagueId,
-    String uid,
-  ) async {
-    final leagueAsync = ref.read(leagueProvider(leagueId));
-    final league = leagueAsync.valueOrNull;
-    if (league == null) return;
-
-    // Owner cannot leave
-    if (league.ownerId == uid) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(context.tr('leaveLeagueOwnerError')),
-          backgroundColor: Colors.redAccent,
-        ));
-      }
-      return;
-    }
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(context.tr('leaveLeagueConfirmTitle')),
-        content: Text(
-          context.trArgs('leaveLeagueConfirmBody', {'name': league.name}),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(context.tr('cancel')),
-          ),
-          TextButton(
-            style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(context.tr('leaveLeague')),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true || !context.mounted) return;
-
-    final ok = await LeagueRepository().leaveLeague(leagueId, uid);
-    if (!context.mounted) return;
-    if (ok) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(context.trArgs('leaveLeagueSuccess', {'name': league.name})),
-      ));
-      context.go('/home');
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(context.tr('leaveLeagueError')),
-        backgroundColor: Colors.redAccent,
-      ));
-    }
-  }
 }
-
-enum _LeagueMenuAction { leave }
 
 // ---------------------------------------------------------------------------
 // Mobile frame — constrains content to a phone-like max width and centers it

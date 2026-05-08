@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../auth/models/user_model.dart';
 import '../../league/providers/league_providers.dart';
+import '../../league/repositories/league_repository.dart';
 import '../../../core/widgets/fighter_sprite.dart';
 import '../providers/calendar_sync_provider.dart';
 import '../../../core/l10n/app_localizations.dart';
@@ -181,6 +182,9 @@ class _ProfileContent extends ConsumerWidget {
               if (context.mounted) context.go('/login');
             },
           ),
+          const SizedBox(height: 12),
+          // Leave current league (if in one)
+          _LeaveLeagueButton(uid: user.id),
         ],
       ),
     );
@@ -603,5 +607,126 @@ class _LangBtn extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Leave League button — shown in profile, only if user belongs to a league.
+// Asks for confirmation before leaving.
+// ---------------------------------------------------------------------------
+
+class _LeaveLeagueButton extends ConsumerWidget {
+  final String uid;
+  const _LeaveLeagueButton({required this.uid});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final leaguesAsync = ref.watch(userLeaguesProvider);
+
+    return leaguesAsync.maybeWhen(
+      data: (leagues) {
+        if (leagues.isEmpty) return const SizedBox.shrink();
+
+        // If user is in more than one league, show a picker; otherwise direct confirm
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Divider(color: Colors.white12, height: 32),
+            Text(
+              'My Leagues',
+              style: Theme.of(context)
+                  .textTheme
+                  .labelSmall
+                  ?.copyWith(color: Colors.white38, letterSpacing: 1.2),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            ...leagues.map((league) {
+              final isOwner = league.ownerId == uid;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(
+                      color: isOwner
+                          ? Colors.white12
+                          : Colors.redAccent.withAlpha(100),
+                    ),
+                    foregroundColor:
+                        isOwner ? Colors.white38 : Colors.redAccent,
+                  ),
+                  icon: Icon(
+                    isOwner ? Icons.lock_outline : Icons.exit_to_app,
+                    size: 16,
+                  ),
+                  label: Text(
+                    isOwner
+                        ? '${league.name}  (owner — can\'t leave)'
+                        : 'Leave "${league.name}"',
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                  onPressed: isOwner
+                      ? null
+                      : () => _confirmLeave(context, ref, league.id, league.name, uid),
+                ),
+              );
+            }),
+          ],
+        );
+      },
+      orElse: () => const SizedBox.shrink(),
+    );
+  }
+
+  Future<void> _confirmLeave(
+    BuildContext context,
+    WidgetRef ref,
+    String leagueId,
+    String leagueName,
+    String uid,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Leave league?'),
+        content: Text(
+          'Are you sure you want to leave "$leagueName"?\n\nYour tasks and history will be removed from this league.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Leave'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    final ok = await LeagueRepository().leaveLeague(leagueId, uid);
+    if (!context.mounted) return;
+
+    if (ok) {
+      ref.invalidate(userLeaguesProvider);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('You left "$leagueName"'),
+          backgroundColor: const Color(0xFF4CAF50),
+        ),
+      );
+      context.go('/home');
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not leave the league. Try again.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
   }
 }
