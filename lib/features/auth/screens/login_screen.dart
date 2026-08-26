@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../../core/l10n/app_localizations.dart';
 import '../../../core/l10n/locale_provider.dart';
+import '../../../core/services/quota_guard.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -76,6 +77,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     } on FirebaseAuthException catch (e) {
       if (mounted) setState(() => _errorMessage = _friendlyError(e));
     } catch (e) {
+      // Free-plan quota exhausted (Firestore write on register/login) — alert.
+      if (handleQuotaError(e, context: mounted ? context : null)) return;
       // Firestore write or other error — user is authenticated, still navigate
       if (mounted) context.go('/home');
     } finally {
@@ -93,6 +96,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     } on FirebaseAuthException catch (e) {
       if (mounted) setState(() => _errorMessage = _friendlyError(e));
     } catch (e) {
+      // Free-plan quota exhausted while writing the user profile — alert.
+      if (handleQuotaError(e, context: mounted ? context : null)) return;
       // Only navigate if we are actually authenticated
       final isSignedIn =
           ref.read(authStateProvider).valueOrNull != null;

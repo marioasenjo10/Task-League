@@ -86,7 +86,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                   : ListView.separated(
                       padding: const EdgeInsets.all(16),
                       itemCount: events.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      separatorBuilder: (_, _) => const Divider(height: 1),
                       itemBuilder: (_, i) => _EventTile(event: events[i]),
                     ),
             ),
@@ -210,11 +210,11 @@ class _FilterPanel extends ConsumerWidget {
           // Fighter selector
           membersAsync.when(
             loading: () => const SizedBox.shrink(),
-            error: (_, __) => const SizedBox.shrink(),
+            error: (_, _) => const SizedBox.shrink(),
             data: (members) {
               if (members.isEmpty) return const SizedBox.shrink();
               return DropdownButtonFormField<String?>(
-                value: filter.memberUid,
+                initialValue: filter.memberUid,
                 dropdownColor: const Color(0xFF1A1A2E),
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(

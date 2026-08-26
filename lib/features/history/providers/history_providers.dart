@@ -24,7 +24,12 @@ final userDisplayNameProvider =
   }
 });
 
-/// Stream all events for a league (full history feed).
+/// Stream the **entire** event history for a league — UNBOUNDED.
+///
+/// ⚠️ This performs one Firestore read per event in the league, so it must be
+/// used sparingly. It is only consumed by the Statistics screen when the user
+/// explicitly selects "All time". Every other feature (history feed,
+/// notifications, arena ranking, scoped stats) uses a bounded query instead.
 final leagueHistoryProvider =
     StreamProvider.family<List<TaskEventModel>, String>((ref, leagueId) {
   final uid = ref.watch(authStateProvider).valueOrNull?.uid;
@@ -36,8 +41,17 @@ final leagueHistoryProvider =
 // Filter state
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// null limit = show all
-const List<int?> kHistoryLimitOptions = [25, 50, 100, null];
+/// Hard ceiling for the History feed — the feed never fetches the whole
+/// collection; unbounded reads are reserved for Stats → All time.
+const int kMaxHistoryFetch = 200;
+
+/// Look-back window (in days) for the "you were attacked" notifications feed.
+const int kNotifWindowDays = 30;
+
+/// Selectable page sizes for the History feed. No "unlimited" option here on
+/// purpose — the full history is only reachable from Stats → All time.
+const List<int?> kHistoryLimitOptions = [25, 50, 100, kMaxHistoryFetch];
+
 
 class HistoryFilter {
   final String? memberUid;   // null = all members
@@ -95,10 +109,40 @@ final historyFilterProvider =
   (ref, leagueId) => HistoryFilterNotifier(),
 );
 
+/// Bounded stream of events for the History feed. Applies the date range
+/// (when set) and a row limit **server-side** so the feed never reads the whole
+/// collection. Member/text filtering is done client-side on this reduced set.
+final historyEventsProvider =
+    StreamProvider.family<List<TaskEventModel>, String>((ref, leagueId) {
+  final uid = ref.watch(authStateProvider).valueOrNull?.uid;
+  if (uid == null) return Stream.value([]);
+  final filter = ref.watch(historyFilterProvider(leagueId));
+
+  DateTime? start;
+  DateTime? end;
+  if (filter.dateFrom != null) {
+    start = DateTime(
+        filter.dateFrom!.year, filter.dateFrom!.month, filter.dateFrom!.day);
+  }
+  if (filter.dateTo != null) {
+    end = DateTime(filter.dateTo!.year, filter.dateTo!.month,
+        filter.dateTo!.day, 23, 59, 59);
+  }
+
+  final limit = (filter.limit ?? kMaxHistoryFetch).clamp(1, kMaxHistoryFetch);
+
+  return ref.watch(taskEventRepositoryProvider).watchEvents(
+        leagueId,
+        start: start,
+        end: end,
+        limit: limit,
+      );
+});
+
 /// Events already filtered client-side.
 final filteredHistoryProvider =
     Provider.family<AsyncValue<List<TaskEventModel>>, String>((ref, leagueId) {
-  final allAsync = ref.watch(leagueHistoryProvider(leagueId));
+  final allAsync = ref.watch(historyEventsProvider(leagueId));
   final filter = ref.watch(historyFilterProvider(leagueId));
 
   return allAsync.whenData((events) {
@@ -108,27 +152,13 @@ final filteredHistoryProvider =
       list = list.where((e) => e.doerId == filter.memberUid).toList();
     }
 
-    if (filter.dateFrom != null) {
-      final from = DateTime(
-          filter.dateFrom!.year, filter.dateFrom!.month, filter.dateFrom!.day);
-      list = list.where((e) => !e.completedAt.isBefore(from)).toList();
-    }
-
-    if (filter.dateTo != null) {
-      final to = DateTime(filter.dateTo!.year, filter.dateTo!.month,
-          filter.dateTo!.day, 23, 59, 59);
-      list = list.where((e) => !e.completedAt.isAfter(to)).toList();
-    }
-
+    // Date range is already applied server-side; the search term is the only
+    // remaining client-side filter.
     if (filter.searchText.isNotEmpty) {
       final q = filter.searchText.toLowerCase();
       list = list
           .where((e) => e.taskTitle.toLowerCase().contains(q))
           .toList();
-    }
-
-    if (filter.limit != null && list.length > filter.limit!) {
-      list = list.sublist(0, filter.limit);
     }
 
     return list;
@@ -142,13 +172,17 @@ final filteredHistoryProvider =
 /// Provider: stream of attack events where the current user is the target.
 /// Returns all events where targetId == currentUid and damageDealt > 0,
 /// sorted by most recent first (same ordering as the history stream).
+///
+/// Bounded to the last [kNotifWindowDays] days so it never reads the whole
+/// collection — old attacks are not relevant as notifications.
 final attackNotificationsProvider =
     StreamProvider.family<List<TaskEventModel>, String>((ref, leagueId) {
   final uid = ref.watch(authStateProvider).valueOrNull?.uid;
   if (uid == null) return Stream.value([]);
+  final since = DateTime.now().subtract(const Duration(days: kNotifWindowDays));
   return ref
       .watch(taskEventRepositoryProvider)
-      .watchEvents(leagueId)
+      .watchEvents(leagueId, start: since, limit: kMaxHistoryFetch)
       .map((events) => events
           .where((e) => e.targetId == uid && e.damageDealt > 0)
           .toList());

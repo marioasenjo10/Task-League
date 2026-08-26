@@ -106,5 +106,29 @@ class AuthService {
     await _auth.signOut();
     await _google.signOut();
   }
+
+  // ── Delete account ───────────────────────────────────────────────────────
+
+  /// Permanently deletes the user's account and all associated data.
+  ///
+  /// Removes the user from every league and deletes their Firestore document,
+  /// then deletes the Firebase Auth account. May throw a [FirebaseAuthException]
+  /// with code `requires-recent-login` if the session is too old; callers should
+  /// handle that by asking the user to sign in again.
+  Future<void> deleteAccount() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    // 1. Delete Firestore data first (while still authenticated).
+    await _userRepo.deleteUserData(user.uid);
+
+    // 2. Delete the Firebase Auth account (may require recent login).
+    await user.delete();
+
+    // 3. Clear any lingering Google session.
+    try {
+      await _google.signOut();
+    } catch (_) {}
+  }
 }
 

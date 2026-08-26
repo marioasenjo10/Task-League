@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../services/quota_guard.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/home/screens/home_screen.dart';
 import '../../features/league/screens/league_screen.dart';
@@ -17,6 +18,7 @@ class AppRouter {
   AppRouter._();
 
   static final GoRouter router = GoRouter(
+    navigatorKey: rootNavigatorKey,
     initialLocation: '/login',
     routes: [
       GoRoute(

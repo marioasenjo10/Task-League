@@ -424,7 +424,7 @@ class _LeaguePeriodResultsBannerState
 
     return prevAsync.when(
       loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
       data: (prev) {
         if (prev.isEmpty) return const SizedBox.shrink();
         final anyActivity = prev.any((e) => e.tasks > 0);
@@ -734,7 +734,7 @@ class _NotificationsSheet extends ConsumerWidget {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  '${e.taskTitle} · -${e.damageDealt} HP',
+                                  '${e.taskTitle}  -${e.damageDealt} HP',
                                   style: const TextStyle(
                                       fontSize: 11, color: Colors.white54),
                                   overflow: TextOverflow.ellipsis,
@@ -1082,7 +1082,7 @@ class _TaskPreviewRow extends ConsumerWidget {
   }
 }
 
-class _QuickCompleteButton extends ConsumerWidget {
+class _QuickCompleteButton extends ConsumerStatefulWidget {
   final TaskModel task;
   final String leagueId;
   final LeagueModel? league;
@@ -1096,28 +1096,66 @@ class _QuickCompleteButton extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    if (league == null) return const SizedBox.shrink();
+  ConsumerState<_QuickCompleteButton> createState() =>
+      _QuickCompleteButtonState();
+}
 
-    return GestureDetector(
-      onTap: () async {
-        final maxHp = maxHpForType(league!.competitionType);
-        // Open opponent picker → battle animation with this specific task
-        await showArenaAttackDialogWithTask(
-            context, ref, task, leagueId, maxHp);
-        onCompleted();
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: 36,
-        height: 36,
-        margin: const EdgeInsets.only(left: 6),
-        decoration: BoxDecoration(
-          color: const Color(0xFF2E7D32).withAlpha(180),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0xFF4CAF50).withAlpha(120)),
+class _QuickCompleteButtonState extends ConsumerState<_QuickCompleteButton> {
+  bool _hovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.league == null) return const SizedBox.shrink();
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovering = true),
+      onExit: (_) => setState(() => _hovering = false),
+      child: GestureDetector(
+        onTap: () async {
+          final maxHp = maxHpForType(widget.league!.competitionType);
+          // Open opponent picker → battle animation with this specific task
+          await showArenaAttackDialogWithTask(
+              context, ref, widget.task, widget.leagueId, maxHp);
+          widget.onCompleted();
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          height: 36,
+          margin: const EdgeInsets.only(left: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFF2E7D32).withAlpha(_hovering ? 255 : 180),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: const Color(0xFF4CAF50).withAlpha(_hovering ? 220 : 120),
+            ),
+            boxShadow: _hovering
+                ? [
+                    BoxShadow(
+                      color: const Color(0xFF4CAF50).withAlpha(90),
+                      blurRadius: 8,
+                      spreadRadius: 1,
+                    ),
+                  ]
+                : null,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.check, color: Colors.white, size: 18),
+              const SizedBox(width: 5),
+              Text(
+                context.tr('complete'),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
         ),
-        child: const Icon(Icons.check, color: Colors.white, size: 18),
       ),
     );
   }

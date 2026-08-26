@@ -216,9 +216,26 @@ class LeagueStats {
 // Main stats provider
 // ─────────────────────────────────────────────────────────────────────────────
 
+/// Events feeding the Statistics screen, scoped to the selected filter.
+///
+/// Only "All time" reads the whole collection (unbounded). Every other filter
+/// (this month, last month, 3-month window, custom range) queries just its date
+/// range server-side, keeping Firestore reads proportional to the window shown.
+final statsEventsProvider =
+    StreamProvider.family<List<TaskEventModel>, String>((ref, leagueId) {
+  final filter = ref.watch(statsFilterProvider(leagueId));
+  final repo = ref.watch(taskEventRepositoryProvider);
+  if (filter.isAllTime) {
+    // The one place a full-history read is allowed.
+    return repo.watchEvents(leagueId);
+  }
+  final range = filter.range;
+  return repo.watchEvents(leagueId, start: range.start, end: range.end);
+});
+
 final leagueStatsProvider =
     Provider.family<AsyncValue<LeagueStats>, String>((ref, leagueId) {
-  final allAsync     = ref.watch(leagueHistoryProvider(leagueId));
+  final allAsync     = ref.watch(statsEventsProvider(leagueId));
   final membersAsync = ref.watch(leagueMembersProvider(leagueId));
   final filter       = ref.watch(statsFilterProvider(leagueId));
 
@@ -330,13 +347,25 @@ bool isStartOfPeriod(CompetitionType type) {
   return type == CompetitionType.weekly ? now.weekday <= 3 : now.day <= 3;
 }
 
+/// Bounded event stream that feeds the Arena ranking (current + previous
+/// period). It reads only from the start of the **previous** period onwards, so
+/// arena reads stay small (≈ 1–2 periods of events) instead of the whole
+/// history.
+final periodEventsProvider = StreamProvider.family<List<TaskEventModel>,
+    ({String leagueId, CompetitionType type})>((ref, args) {
+  final start = previousPeriodRange(args.type).start;
+  return ref
+      .watch(taskEventRepositoryProvider)
+      .watchEvents(args.leagueId, start: start);
+});
+
 /// Provider family — key is leagueId.
 /// Returns a ranked list of [PeriodRankEntry] sorted by tasks desc for the
 /// current weekly/monthly competition period.
 final periodRankingProvider = Provider.family<
     AsyncValue<List<PeriodRankEntry>>, ({String leagueId, CompetitionType type})>(
   (ref, args) {
-    final eventsAsync = ref.watch(leagueHistoryProvider(args.leagueId));
+    final eventsAsync = ref.watch(periodEventsProvider(args));
     final membersAsync = ref.watch(leagueMembersProvider(args.leagueId));
 
     if (eventsAsync.isLoading || membersAsync.isLoading) {
@@ -385,7 +414,7 @@ final periodRankingProvider = Provider.family<
 final previousPeriodRankingProvider = Provider.family<
     AsyncValue<List<PeriodRankEntry>>, ({String leagueId, CompetitionType type})>(
   (ref, args) {
-    final eventsAsync  = ref.watch(leagueHistoryProvider(args.leagueId));
+    final eventsAsync  = ref.watch(periodEventsProvider(args));
     final membersAsync = ref.watch(leagueMembersProvider(args.leagueId));
 
     if (eventsAsync.isLoading || membersAsync.isLoading) return const AsyncLoading();

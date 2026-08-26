@@ -30,6 +30,15 @@ android {
         jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
+    signingConfigs {
+        create("release") {
+            keyAlias = keyProperties["keyAlias"] as String? ?: ""
+            keyPassword = keyProperties["keyPassword"] as String? ?: ""
+            storeFile = keyProperties["storeFile"]?.let { file(it) }
+            storePassword = keyProperties["storePassword"] as String? ?: ""
+        }
+    }
+
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.masen.taskfight"
@@ -44,15 +53,6 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("release")
-        }
-    }
-
-    signingConfigs {
-        create("release") {
-            keyAlias = keyProperties["keyAlias"] as String? ?: ""
-            keyPassword = keyProperties["keyPassword"] as String? ?: ""
-            storeFile = keyProperties["storeFile"]?.let { file(it) }
-            storePassword = keyProperties["storePassword"] as String? ?: ""
         }
     }
 }

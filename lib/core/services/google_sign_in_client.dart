@@ -9,11 +9,15 @@ const _webClientId =
 /// Both AuthService (Firebase login) and GoogleCalendarService use this,
 /// so the user only ever goes through one OAuth consent screen that grants
 /// both Firebase auth AND Calendar access at the same time.
+///
+/// We request only [calendarEventsScope] (create/edit events) rather than the
+/// full [calendarScope]: the app only pushes task events to the calendar, so
+/// the minimal scope reduces the OAuth consent warning and verification burden.
 final googleSignInClient = kIsWeb
     ? GoogleSignIn(
         clientId: _webClientId,
-        scopes: [gcal.CalendarApi.calendarScope],
+        scopes: [gcal.CalendarApi.calendarEventsScope],
       )
     : GoogleSignIn(
-        scopes: [gcal.CalendarApi.calendarScope],
+        scopes: [gcal.CalendarApi.calendarEventsScope],
       );

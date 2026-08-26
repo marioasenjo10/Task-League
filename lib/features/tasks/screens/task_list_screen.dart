@@ -1,21 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
-import 'dart:math' as math;
 import '../providers/task_providers.dart';
 import '../providers/task_service_provider.dart';
 import '../models/task_model.dart';
 import '../../auth/providers/auth_providers.dart';
-import '../../auth/repositories/user_repository.dart';
 import '../../auth/models/user_model.dart';
 import '../../league/providers/league_providers.dart';
 import '../../league/models/league_model.dart';
 import '../../league/screens/members_screen.dart' show leagueMembersProvider;
+import '../../arena/screens/arena_screen.dart' show showArenaAttackDialogWithTask;
 import '../../../core/widgets/fighter_sprite.dart';
 import '../../../core/l10n/app_localizations.dart';
+import '../../../core/services/quota_guard.dart';
 
 // Shared reminder options (used in create + edit sheets) — keys are l10n keys
 const _reminderOptions = <String, int?>{
@@ -205,7 +204,7 @@ class _LeagueTasksTabState extends ConsumerState<_LeagueTasksTab> {
                 : ListView.separated(
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
                     itemCount: tasks.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    separatorBuilder: (_, _) => const SizedBox(height: 8),
                     itemBuilder: (context, index) => _LeagueTaskCard(
                       task: tasks[index],
                       leagueId: widget.leagueId,
@@ -624,146 +623,11 @@ Future<void> _confirmDelete(
 
 Future<void> _showAttackDialog(
     BuildContext context, WidgetRef ref, TaskModel task, String leagueId) async {
-  final leagueAsync = ref.read(leagueProvider(leagueId));
-  final league = leagueAsync.valueOrNull;
+  final league = ref.read(leagueProvider(leagueId)).valueOrNull;
   if (league == null) return;
-
-  final currentUid = ref.read(authStateProvider).valueOrNull?.uid ?? '';
-  final currentUser = await UserRepository().getUser(currentUid);
-
-  // Check daily attack cap before opening the dialog
-  final todayStr = DateTime.now().toIso8601String().substring(0, 10);
-  final attacksUsed = (currentUser?.lastAttackDate == todayStr)
-      ? (currentUser?.todayAttacks ?? 0)
-      : 0;
-  final attacksRemaining = (kMaxDailyAttacks - attacksUsed).clamp(0, kMaxDailyAttacks);
-
-  final targets = league.memberIds.where((id) => id != currentUid).toList();
-  String? selectedTarget;
-
-  await showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: const Color(0xFF1A1A2E),
-    shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-    builder: (ctx) => StatefulBuilder(
-      builder: (ctx, setState) => Padding(
-        padding: EdgeInsets.only(
-          left: 24, right: 24, top: 24,
-          bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(context.trArgs('completeTask', {'title': task.title}),
-                style: Theme.of(ctx).textTheme.titleLarge),
-            // ── Attacks-cap warning ──────────────────────────────────
-            if (attacksRemaining == 0) ...[
-              const SizedBox(height: 10),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE53935).withAlpha(25),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFFE53935).withAlpha(120)),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.warning_amber_rounded,
-                        color: Color(0xFFEF9A9A), size: 18),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        context.trArgs('attackCapReached',
-                            {'max': '$kMaxDailyAttacks'}),
-                        style: const TextStyle(
-                            color: Color(0xFFEF9A9A), fontSize: 12),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ] else ...[
-              const SizedBox(height: 4),
-              _AttacksRemainingChip(remaining: attacksRemaining),
-            ],
-            Text(
-              task.repeat != TaskRepeat.none
-                  ? context.tr('thisOccurrence')
-                  : context.tr('dealsEarns'),
-              style: Theme.of(ctx).textTheme.labelSmall,
-            ),
-            if (targets.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              Text(context.tr('chooseTarget'),
-                  style: const TextStyle(color: Colors.white70)),
-              const SizedBox(height: 8),
-              ...targets.map((id) => _TargetTile(
-                    uid: id,
-                    selected: selectedTarget == id,
-                    onTap: () => setState(() =>
-                        selectedTarget = selectedTarget == id ? null : id),
-                    leagueId: leagueId,
-                    maxHp: maxHpForType(league.competitionType),
-                  )),
-            ] else ...[
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                    color: Colors.white10,
-                    borderRadius: BorderRadius.circular(8)),
-                child: Row(children: [
-                  const Icon(Icons.info_outline, color: Colors.white38, size: 18),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                        context.tr('noOtherMembers'),
-                        style: const TextStyle(color: Colors.white54, fontSize: 12)),
-                  ),
-                ]),
-              ),
-            ],
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.bolt),
-              label: Text(task.repeat != TaskRepeat.none
-                  ? context.tr('doneOccurrence')
-                  : context.tr('confirmAttack')),
-              onPressed: () async {
-                Navigator.pop(ctx);
-                UserModel? targetUser;
-                if (selectedTarget != null) {
-                  targetUser = await UserRepository().getUser(selectedTarget!);
-                }
-                if (context.mounted) {
-                  await showDialog(
-                    context: context,
-                    barrierDismissible: false,
-                    builder: (_) => _BattleAnimationDialog(
-                      attacker: currentUser,
-                      target: targetUser,
-                      task: task,
-                      onComplete: () async {
-                        await ref.read(taskServiceProvider).completeTask(
-                              task: task,
-                              doerId: currentUid,
-                              targetId: selectedTarget,
-                              leagueType: league.competitionType,
-                            );
-                      },
-                    ),
-                  );
-                }
-              },
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
+  final maxHp = maxHpForType(league.competitionType);
+  // Unified complete/attack flow — shared with the League hub & Arena.
+  await showArenaAttackDialogWithTask(context, ref, task, leagueId, maxHp);
 }
 
 Future<void> _showEditSheet(
@@ -1483,7 +1347,7 @@ class _CalendarView extends ConsumerWidget {
               : ListView.separated(
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
                   itemCount: tasksForDay.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  separatorBuilder: (_, _) => const SizedBox(height: 8),
                   itemBuilder: (context, index) {
                     final task = tasksForDay[index];
                     final isRecurring = task.repeat != TaskRepeat.none;
@@ -1781,7 +1645,7 @@ class _EditTaskSheetState extends ConsumerState<_EditTaskSheet> {
 
             // Repeat
             DropdownButtonFormField<TaskRepeat>(
-              value: _repeat,
+              initialValue: _repeat,
               decoration: InputDecoration(labelText: context.tr('repeat')),
               items: TaskRepeat.values
                   .map((r) => DropdownMenuItem(
@@ -1798,7 +1662,7 @@ class _EditTaskSheetState extends ConsumerState<_EditTaskSheet> {
             // Assignee
             if (members.isNotEmpty)
               DropdownButtonFormField<String?>(
-                value: _assigneeId,
+                initialValue: _assigneeId,
                 decoration: InputDecoration(
                   labelText: context.tr('assignedToLabel'),
                   prefixIcon: const Icon(Icons.person_pin),
@@ -1874,7 +1738,7 @@ class _EditTaskSheetState extends ConsumerState<_EditTaskSheet> {
 
             // Reminder
             DropdownButtonFormField<int?>(
-              value: _reminderMinutes,
+              initialValue: _reminderMinutes,
               decoration: InputDecoration(
                 labelText: context.tr('reminder'),
                 prefixIcon: const Icon(Icons.notifications_outlined),
@@ -2416,29 +2280,6 @@ class _TasksAttacksBanner extends StatelessWidget {
   }
 }
 
-// Compact chip used in the attack dialog
-class _AttacksRemainingChip extends StatelessWidget {
-  final int remaining;
-  const _AttacksRemainingChip({required this.remaining});
-
-  @override
-  Widget build(BuildContext context) {
-    final color = remaining > 2
-        ? const Color(0xFF4CAF50)
-        : const Color(0xFFFFC107);
-    return Row(
-      children: [
-        Icon(Icons.bolt, size: 14, color: color),
-        const SizedBox(width: 4),
-        Text(
-          context.trArgs('attacksLeft', {'n': '$remaining'}),
-          style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600),
-        ),
-      ],
-    );
-  }
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Empty state
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2469,434 +2310,4 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Shared target tile / battle dialog (unchanged logic, kept here)
-// ─────────────────────────────────────────────────────────────────────────────
 
-final _targetUserProvider =
-    FutureProvider.family<UserModel?, String>((ref, uid) async {
-  if (uid.isEmpty) return null;
-  try {
-    return await UserRepository().getUser(uid);
-  } catch (_) {
-    return null;
-  }
-});
-
-class _TargetTile extends ConsumerWidget {
-  final String uid;
-  final bool selected;
-  final VoidCallback onTap;
-  final String leagueId;
-  final int maxHp;
-  const _TargetTile(
-      {required this.uid, required this.selected, required this.onTap,
-       required this.leagueId, required this.maxHp});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final userAsync = ref.watch(_targetUserProvider(uid));
-    final user = userAsync.valueOrNull;
-    final name = user?.name.isNotEmpty == true ? user!.name : uid;
-    final hp = user?.currentHp(leagueId, maxHp: maxHp);
-    final hpRatio = (user != null && maxHp > 0)
-        ? ((hp ?? maxHp) / maxHp).clamp(0.0, 1.0)
-        : 1.0;
-    final hpColor = hpRatio > 0.6
-        ? const Color(0xFF4CAF50)
-        : hpRatio > 0.3
-            ? const Color(0xFFFFC107)
-            : const Color(0xFFE53935);
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      color: selected
-          ? const Color(0xFF6C3CE1).withAlpha(40)
-          : Colors.white.withAlpha(8),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-        side: selected
-            ? const BorderSide(color: Color(0xFF6C3CE1), width: 1.5)
-            : BorderSide.none,
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(10),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          child: Row(
-            children: [
-              Icon(
-                selected
-                    ? Icons.radio_button_checked
-                    : Icons.radio_button_off,
-                color: const Color(0xFF6C3CE1),
-                size: 20,
-              ),
-              const SizedBox(width: 10),
-              CircleAvatar(
-                radius: 18,
-                backgroundColor: const Color(0xFF6C3CE1).withAlpha(50),
-                backgroundImage: user?.avatarUrl.isNotEmpty == true
-                    ? NetworkImage(user!.avatarUrl)
-                    : null,
-                child: user?.avatarUrl.isNotEmpty != true
-                    ? Text(name.isNotEmpty ? name[0].toUpperCase() : '?',
-                        style: const TextStyle(
-                            fontSize: 14, fontWeight: FontWeight.bold))
-                    : null,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(name,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w600, fontSize: 14)),
-                    const SizedBox(height: 4),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(3),
-                      child: LinearProgressIndicator(
-                        value: hpRatio,
-                        minHeight: 5,
-                        backgroundColor: Colors.white12,
-                        valueColor: AlwaysStoppedAnimation<Color>(hpColor),
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    if (user != null)
-                      Text('${hp ?? maxHp}/$maxHp HP  ·  🪙${user.coins}',
-                          style: const TextStyle(
-                              color: Colors.white38, fontSize: 10)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Battle animation dialog
-// ─────────────────────────────────────────────────────────────────────────────
-
-enum _BattlePhase { idle, attacking, hit, result }
-
-class _BattleAnimationDialog extends StatefulWidget {
-  final UserModel? attacker;
-  final UserModel? target;
-  final TaskModel task;
-  final Future<void> Function() onComplete;
-
-  const _BattleAnimationDialog({
-    required this.attacker,
-    required this.target,
-    required this.task,
-    required this.onComplete,
-  });
-
-  @override
-  State<_BattleAnimationDialog> createState() => _BattleAnimationDialogState();
-}
-
-class _BattleAnimationDialogState extends State<_BattleAnimationDialog>
-    with SingleTickerProviderStateMixin {
-  _BattlePhase _phase = _BattlePhase.idle;
-  late AnimationController _shakeCtrl;
-  bool _hasTarget = false;
-  String _resultMessage = '';
-  bool _loading = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _hasTarget = widget.target != null;
-    _shakeCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 500));
-    Future.delayed(const Duration(milliseconds: 400), _startBattle);
-  }
-
-  @override
-  void dispose() {
-    _shakeCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _startBattle() async {
-    if (!mounted) return;
-    setState(() => _phase = _BattlePhase.attacking);
-    await Future.delayed(const Duration(milliseconds: 700));
-    if (!mounted) return;
-    if (_hasTarget) {
-      setState(() => _phase = _BattlePhase.hit);
-      _shakeCtrl.forward(from: 0);
-      await Future.delayed(const Duration(milliseconds: 600));
-      if (!mounted) return;
-    }
-    setState(() => _loading = true);
-    try {
-      await widget.onComplete();
-      if (!mounted) return;
-      final dmg = widget.task.effort;
-      final name = _hasTarget
-          ? (widget.target!.name.isNotEmpty ? widget.target!.name : 'target')
-          : '';
-      _resultMessage = _hasTarget
-          ? context.tr('arenaAttackSuccess')
-              .replaceAll('{dmg}', '$dmg')
-              .replaceAll('{name}', name)
-          : '✅ 🪙 +1 ${context.tr('profileCoins')}';
-    } catch (e) {
-      _resultMessage = '❌ Error: $e';
-    }
-    if (!mounted) return;
-    setState(() {
-      _loading = false;
-      _phase = _BattlePhase.result;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final attackerSkin = widget.attacker?.characterSkin ?? 'warrior';
-    final targetSkin = widget.target?.characterSkin ?? 'warrior';
-    final damage = widget.task.effort;
-
-    return Dialog(
-      backgroundColor: const Color(0xFF0D0D1A),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              _phase == _BattlePhase.result ? '⚔️ Result' : '⚔️ Attacking!',
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.5),
-            ),
-            const SizedBox(height: 4),
-            Text(widget.task.title,
-                style: const TextStyle(color: Colors.white54, fontSize: 13)),
-            const SizedBox(height: 24),
-            SizedBox(
-              height: 140,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  _AnimatedAttacker(
-                    skin: attackerSkin,
-                    isAttacking: _phase == _BattlePhase.attacking ||
-                        _phase == _BattlePhase.hit,
-                    label: widget.attacker?.name.isNotEmpty == true
-                        ? widget.attacker!.name
-                        : 'You',
-                  ),
-                  _ImpactIndicator(
-                      phase: _phase, damage: damage, hasTarget: _hasTarget),
-                  if (_hasTarget)
-                    _AnimatedTarget(
-                      skin: targetSkin,
-                      shakeCtrl: _shakeCtrl,
-                      isHit: _phase == _BattlePhase.hit,
-                      label: widget.target!.name.isNotEmpty
-                          ? widget.target!.name
-                          : 'Target',
-                    )
-                  else
-                    Column(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: const [
-                        Icon(Icons.help_outline,
-                            color: Colors.white24, size: 60),
-                        SizedBox(height: 4),
-                        Text('No target',
-                            style: TextStyle(
-                                color: Colors.white38, fontSize: 11)),
-                      ],
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            if (_loading)
-              const CircularProgressIndicator()
-            else if (_phase == _BattlePhase.result)
-              Column(
-                children: [
-                  Text(_resultMessage,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          height: 1.6)),
-                  const SizedBox(height: 20),
-                  ElevatedButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Continue')),
-                ],
-              )
-            else
-              Text(
-                _phase == _BattlePhase.idle
-                    ? 'Preparing...'
-                    : _phase == _BattlePhase.attacking
-                        ? 'Attacking!'
-                        : 'Hit!',
-                style: const TextStyle(color: Colors.white54, fontSize: 13),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _AnimatedAttacker extends StatelessWidget {
-  final String skin;
-  final bool isAttacking;
-  final String label;
-  const _AnimatedAttacker(
-      {required this.skin, required this.isAttacking, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        AnimatedSlide(
-          offset: isAttacking ? const Offset(0.4, 0) : Offset.zero,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-          child: FighterSprite(
-            skin: skin,
-            size: 90,
-            pose: isAttacking ? FighterPose.attack : FighterPose.idle,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(label,
-            style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 11,
-                fontWeight: FontWeight.w600),
-            overflow: TextOverflow.ellipsis),
-      ],
-    );
-  }
-}
-
-class _AnimatedTarget extends StatelessWidget {
-  final String skin;
-  final AnimationController shakeCtrl;
-  final bool isHit;
-  final String label;
-  const _AnimatedTarget(
-      {required this.skin,
-      required this.shakeCtrl,
-      required this.isHit,
-      required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        AnimatedBuilder(
-          animation: shakeCtrl,
-          builder: (_, child) {
-            final shake = isHit
-                ? math.sin(shakeCtrl.value * math.pi * 10) *
-                    12.0 *
-                    (1 - shakeCtrl.value)
-                : 0.0;
-            final tintAlpha =
-                (math.sin(shakeCtrl.value * math.pi) * 180).clamp(0, 180).toInt();
-            return Transform.translate(
-              offset: Offset(shake, 0),
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Transform.scale(
-                    scaleX: -1,
-                    child: FighterSprite(
-                        skin: skin,
-                        size: 90,
-                        pose: isHit ? FighterPose.hit : FighterPose.idle),
-                  ),
-                  if (isHit)
-                    Container(
-                      width: 90,
-                      height: 90,
-                      decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Color.fromARGB(tintAlpha, 255, 50, 50)),
-                    ),
-                ],
-              ),
-            );
-          },
-        ),
-        const SizedBox(height: 4),
-        Text(label,
-            style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 11,
-                fontWeight: FontWeight.w600),
-            overflow: TextOverflow.ellipsis),
-      ],
-    );
-  }
-}
-
-class _ImpactIndicator extends StatelessWidget {
-  final _BattlePhase phase;
-  final int damage;
-  final bool hasTarget;
-  const _ImpactIndicator(
-      {required this.phase, required this.damage, required this.hasTarget});
-
-  @override
-  Widget build(BuildContext context) {
-    if (!hasTarget) return const SizedBox(width: 40);
-    if (phase == _BattlePhase.hit) {
-      return Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Text('💥', style: TextStyle(fontSize: 36))
-              .animate()
-              .scale(
-                  begin: const Offset(0.3, 0.3),
-                  end: const Offset(1.2, 1.2),
-                  duration: 200.ms,
-                  curve: Curves.elasticOut),
-          const SizedBox(height: 4),
-          Text('-$damage HP',
-                  style: const TextStyle(
-                      color: Color(0xFFFF5252),
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold))
-              .animate()
-              .fadeIn(duration: 150.ms),
-        ],
-      );
-    }
-    return Text('VS',
-        style: TextStyle(
-            color: phase == _BattlePhase.attacking
-                ? const Color(0xFFFFD600)
-                : Colors.white24,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 2));
-  }
-}

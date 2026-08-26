@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../core/l10n/app_localizations.dart';
+import '../../../core/services/quota_guard.dart';
 import '../providers/task_service_provider.dart';
 import '../models/task_model.dart';
 import '../../auth/providers/auth_providers.dart';
@@ -133,6 +134,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
 
       if (mounted) context.pop();
     } catch (e) {
+      if (handleQuotaError(e, context: mounted ? context : null)) return;
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('${context.tr('error')}: $e')),
@@ -215,7 +217,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
 
               // ── Repeat ────────────────────────────────────────────────
               DropdownButtonFormField<TaskRepeat>(
-                value: _repeat,
+                initialValue: _repeat,
                 decoration: InputDecoration(labelText: context.tr('repeat')),
                 items: TaskRepeat.values
                     .map((r) => DropdownMenuItem(
@@ -237,9 +239,9 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
               // ── Assignee ──────────────────────────────────────────────
               membersAsync.when(
                 loading: () => const SizedBox.shrink(),
-                error: (_, __) => const SizedBox.shrink(),
+                error: (_, _) => const SizedBox.shrink(),
                 data: (members) => DropdownButtonFormField<String?>(
-                  value: _assigneeId,
+                  initialValue: _assigneeId,
                   decoration: InputDecoration(
                     labelText: context.tr('assignedToLabel'),
                     prefixIcon: const Icon(Icons.person_pin),
@@ -326,7 +328,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
 
               // ── Reminder ──────────────────────────────────────────────
               DropdownButtonFormField<int?>(
-                value: _reminderMinutes,
+                initialValue: _reminderMinutes,
                 decoration: InputDecoration(
                   labelText: context.tr('reminder'),
                   prefixIcon: const Icon(Icons.notifications_outlined),

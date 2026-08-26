@@ -29,14 +29,36 @@ class TaskEventRepository {
     return withId;
   }
 
-  /// Stream all events for a league, ordered by most recent.
-  Stream<List<TaskEventModel>> watchEvents(String leagueId) {
-    return _events(leagueId)
-        .orderBy('completedAt', descending: true)
-        .snapshots()
-        .map((snap) => snap.docs
-            .map((d) => TaskEventModel.fromFirestore(d.data(), d.id))
-            .toList());
+  /// Stream events for a league, ordered by most recent.
+  ///
+  /// All parameters are optional and applied **server-side** to keep Firestore
+  /// read costs low:
+  ///  - [start] / [end]  → only events whose `completedAt` falls in the range.
+  ///  - [limit]          → cap the number of documents returned.
+  ///
+  /// Passing no arguments streams the **entire** history (used only by the
+  /// Statistics screen when "All time" is selected).
+  Stream<List<TaskEventModel>> watchEvents(
+    String leagueId, {
+    DateTime? start,
+    DateTime? end,
+    int? limit,
+  }) {
+    Query<Map<String, dynamic>> q =
+        _events(leagueId).orderBy('completedAt', descending: true);
+    if (start != null) {
+      q = q.where('completedAt',
+          isGreaterThanOrEqualTo: Timestamp.fromDate(start));
+    }
+    if (end != null) {
+      q = q.where('completedAt', isLessThanOrEqualTo: Timestamp.fromDate(end));
+    }
+    if (limit != null) {
+      q = q.limit(limit);
+    }
+    return q.snapshots().map((snap) => snap.docs
+        .map((d) => TaskEventModel.fromFirestore(d.data(), d.id))
+        .toList());
   }
 
   /// Events for a specific user within a league.

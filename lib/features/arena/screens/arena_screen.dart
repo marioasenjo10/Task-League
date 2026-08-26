@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/l10n/app_localizations.dart';
+import '../../../core/services/quota_guard.dart';
+import '../../../core/services/ads_service.dart';
 import '../../../core/widgets/fighter_sprite.dart';
 import '../../league/screens/members_screen.dart' show leagueMembersProvider;
 import '../../league/providers/league_providers.dart';
@@ -295,7 +297,7 @@ class _PreviousPeriodBanner extends StatelessWidget {
 
     return prevRankAsync.when(
       loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
       data: (prev) {
         // Don't show banner if nobody completed any tasks last period
         final anyActivity = prev.any((e) => e.tasks > 0);
@@ -1857,7 +1859,7 @@ class _PlayersTab extends ConsumerWidget {
         return ListView.separated(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
           itemCount: sorted.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 8),
+          separatorBuilder: (_, _) => const SizedBox(height: 8),
           itemBuilder: (context, index) => _PlayerCard(
             user: sorted[index],
             rank: index + 1,
@@ -2612,6 +2614,7 @@ Future<void> showArenaAttackDialog(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
     builder: (ctx) => _ArenaTaskPickerSheet(
       target: target,
+      currentUser: currentUser,
       tasks: allTasks,
       attacksRemaining: attacksRemaining,
       maxHp: maxHp,
@@ -2641,12 +2644,13 @@ Future<void> showArenaAttackDialog(
             attackerIsKO: attackerIsKO,
             noAttacksLeft: attacksRemaining == 0,
             onComplete: () async {
-              await ref.read(taskServiceProvider).completeTask(
+              final event = await ref.read(taskServiceProvider).completeTask(
                     task: task,
                     doerId: currentUid,
                     targetId: target?.id,
                     leagueType: league.competitionType,
                   );
+              return event.coinsEarned;
             },
           ),
         );
@@ -2672,15 +2676,13 @@ Future<void> showArenaAttackDialogWithTask(
   if (currentUid.isEmpty) return;
 
   final currentUser = await UserRepository().getUser(currentUid);
-  final allMembers = (ref.read(leagueMembersProvider(leagueId)).valueOrNull ?? [])
-      .where((m) => m.id != currentUid)
-      .toList();
-
-  final todayStr = DateTime.now().toIso8601String().substring(0, 10);
-  final attacksUsed = (currentUser?.lastAttackDate == todayStr)
-      ? (currentUser?.todayAttacks ?? 0) : 0;
-  final attacksRemaining =
-      (kMaxDailyAttacks - attacksUsed).clamp(0, kMaxDailyAttacks);
+  // All league members INCLUDING the current user, so the doer can be changed
+  // (default: the current user).
+  final allMembers = List<UserModel>.from(
+      ref.read(leagueMembersProvider(leagueId)).valueOrNull ?? const []);
+  if (currentUser != null && !allMembers.any((m) => m.id == currentUid)) {
+    allMembers.insert(0, currentUser);
+  }
 
   if (!context.mounted) return;
 
@@ -2692,32 +2694,80 @@ Future<void> showArenaAttackDialogWithTask(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
     builder: (ctx) => _OpponentPickerSheet(
       task: task,
-      members: allMembers,
+      allMembers: allMembers,
+      currentUserId: currentUid,
       leagueId: leagueId,
       maxHp: maxHp,
-      attacksRemaining: attacksRemaining,
-      onOpponentSelected: (UserModel? target) async {
+      onSkip: task.repeat == TaskRepeat.none
+          ? null
+          : () async {
+              final confirmed = await showDialog<bool>(
+                context: ctx,
+                builder: (dctx) => AlertDialog(
+                  backgroundColor: const Color(0xFF1A1A2E),
+                  title: Text(context.tr('skipOccurrenceTitle'),
+                      style: const TextStyle(color: Colors.white)),
+                  content: Text(
+                    context.trArgs(
+                        'skipOccurrenceMessage', {'title': task.title}),
+                    style: const TextStyle(color: Colors.white70),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(dctx, false),
+                      child: Text(context.tr('cancel')),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(dctx, true),
+                      style: TextButton.styleFrom(
+                          foregroundColor: const Color(0xFFEF9A9A)),
+                      child: Text(context.tr('skipConfirm')),
+                    ),
+                  ],
+                ),
+              );
+              if (confirmed != true) return;
+              try {
+                await ref.read(taskServiceProvider).skipOccurrence(task);
+              } catch (e) {
+                if (isQuotaError(e)) {
+                  handleQuotaError(e);
+                  return;
+                }
+              }
+              if (ctx.mounted) Navigator.of(ctx).pop();
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(context.tr('skippedToast'))),
+                );
+              }
+            },
+      onConfirm: (UserModel doer, UserModel? target) async {
         Navigator.of(ctx).pop();
         if (!context.mounted) return;
         final resolvedMaxHp = maxHpForType(league.competitionType);
-        final attackerIsKO =
-            currentUser != null && currentUser.currentHp(leagueId, maxHp: resolvedMaxHp) <= 0;
+        final attackerIsKO = doer.currentHp(leagueId, maxHp: resolvedMaxHp) <= 0;
+        final todayStr = DateTime.now().toIso8601String().substring(0, 10);
+        final used = doer.lastAttackDate == todayStr ? doer.todayAttacks : 0;
+        final remaining =
+            (kMaxDailyAttacks - used).clamp(0, kMaxDailyAttacks);
         await showDialog(
           context: context,
           barrierDismissible: false,
           builder: (_) => _ArenaBattleDialog(
-            attacker: currentUser,
+            attacker: doer,
             target: target,
             task: task,
             attackerIsKO: attackerIsKO,
-            noAttacksLeft: attacksRemaining == 0,
+            noAttacksLeft: remaining == 0,
             onComplete: () async {
-              await ref.read(taskServiceProvider).completeTask(
+              final event = await ref.read(taskServiceProvider).completeTask(
                     task: task,
-                    doerId: currentUid,
+                    doerId: doer.id,
                     targetId: target?.id,
                     leagueType: league.competitionType,
                   );
+              return event.coinsEarned;
             },
           ),
         );
@@ -2730,25 +2780,98 @@ Future<void> showArenaAttackDialogWithTask(
 // Opponent picker sheet — used from league hub when task is already chosen
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _OpponentPickerSheet extends StatelessWidget {
+class _OpponentPickerSheet extends ConsumerStatefulWidget {
   final TaskModel task;
-  final List<UserModel> members; // opponents (excluding current user)
+  final List<UserModel> allMembers; // all league members incl. current user
+  final String currentUserId;
   final String leagueId;
   final int maxHp;
-  final int attacksRemaining;
-  final void Function(UserModel? target) onOpponentSelected;
+  final void Function(UserModel doer, UserModel? target) onConfirm;
+  final VoidCallback? onSkip; // recurring tasks only: skip this occurrence
 
   const _OpponentPickerSheet({
     required this.task,
-    required this.members,
+    required this.allMembers,
+    required this.currentUserId,
     required this.leagueId,
     required this.maxHp,
-    required this.attacksRemaining,
-    required this.onOpponentSelected,
+    required this.onConfirm,
+    this.onSkip,
   });
 
   @override
+  ConsumerState<_OpponentPickerSheet> createState() =>
+      _OpponentPickerSheetState();
+}
+
+class _OpponentPickerSheetState extends ConsumerState<_OpponentPickerSheet> {
+  late String _doerId;
+  bool _watchingAd = false;
+  // Ad-for-coin rewards claimed in THIS session (applies to current user).
+  int _adRewardsClaimed = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _doerId = widget.currentUserId;
+  }
+
+  int _attacksRemainingFor(UserModel doer) {
+    final todayStr = DateTime.now().toIso8601String().substring(0, 10);
+    final used = doer.lastAttackDate == todayStr ? doer.todayAttacks : 0;
+    return (kMaxDailyAttacks - used).clamp(0, kMaxDailyAttacks);
+  }
+
+  /// Whether the current user can still claim an ad-for-coin reward today.
+  bool _canWatchAdForCoin(UserModel doer) {
+    if (doer.id != widget.currentUserId) return false;
+    if (!ref.read(adsServiceProvider).canOfferReward) return false;
+    final todayStr = DateTime.now().toIso8601String().substring(0, 10);
+    final storedClaims =
+        doer.lastBonusAttackDate == todayStr ? doer.bonusAttacksToday : 0;
+    return storedClaims + _adRewardsClaimed < kMaxAdAttacks;
+  }
+
+  Future<void> _watchAdForCoin(UserModel doer) async {
+    setState(() => _watchingAd = true);
+    final ads = ref.read(adsServiceProvider);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final earned = await ads.showRewarded();
+      if (!mounted) return;
+      if (!earned) {
+        messenger.showSnackBar(
+          SnackBar(content: Text(context.tr('watchAdNotReady'))),
+        );
+        return;
+      }
+      final coins =
+          await ref.read(userRepositoryProvider).grantAdAttackCoin(doer.id);
+      if (!mounted) return;
+      if (coins > 0) {
+        setState(() => _adRewardsClaimed += 1);
+        messenger.showSnackBar(
+          SnackBar(content: Text(context.tr('adAttackUnlocked'))),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _watchingAd = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final task = widget.task;
+    final leagueId = widget.leagueId;
+    final maxHp = widget.maxHp;
+
+    final doer = widget.allMembers.firstWhere(
+      (m) => m.id == _doerId,
+      orElse: () => widget.allMembers.first,
+    );
+    final members = widget.allMembers.where((m) => m.id != doer.id).toList();
+    final attacksRemaining = _attacksRemainingFor(doer);
+
     final liveOpponents =
         members.where((m) => m.currentHp(leagueId, maxHp: maxHp) > 0).toList();
     final canAttack = attacksRemaining > 0 && liveOpponents.isNotEmpty;
@@ -2799,80 +2922,227 @@ class _OpponentPickerSheet extends StatelessWidget {
             ),
           ),
 
-          // Title
-          const Text(
-            'Who do you want to attack?',
-            style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            canAttack
-                ? 'Select an opponent or complete without attacking.'
-                : attacksRemaining == 0
-                    ? 'No attacks left today — you can still earn coins.'
-                    : 'All opponents are K.O.! Complete to earn coins.',
-            style: const TextStyle(color: Colors.white54, fontSize: 12),
-          ),
-          const SizedBox(height: 16),
-
-          // No-attack option (always shown first)
-          _OpponentRow(
-            name: 'No one — just earn coins & XP',
-            subtitle: 'Complete the task without dealing damage',
-            icon: Icons.monetization_on_outlined,
-            iconColor: const Color(0xFFFFD700),
-            hp: null,
-            maxHp: maxHp,
-            leagueId: leagueId,
-            onTap: () => onOpponentSelected(null),
-          ),
-          const SizedBox(height: 8),
-
-          if (liveOpponents.isEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                'No live opponents available.',
-                style: const TextStyle(color: Colors.white38, fontSize: 12),
-                textAlign: TextAlign.center,
+          // Doer selector — who actually did the task (default: current user)
+          if (widget.allMembers.length > 1) ...[
+            Text(
+              context.tr('whoDidIt'),
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 78,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: widget.allMembers.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 10),
+                itemBuilder: (_, i) {
+                  final m = widget.allMembers[i];
+                  return _DoerChip(
+                    member: m,
+                    selected: m.id == _doerId,
+                    isMe: m.id == widget.currentUserId,
+                    onTap: () => setState(() => _doerId = m.id),
+                  );
+                },
               ),
-            )
-          else if (!canAttack)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                'Attack cap reached — attacks unlock tomorrow.',
-                style: const TextStyle(color: Colors.white38, fontSize: 12),
-                textAlign: TextAlign.center,
-              ),
-            )
-          else ...[
-            const Divider(color: Colors.white12),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // When someone ELSE did the task, no attacking is allowed: it only
+          // grants coins/XP to that person and does not consume daily attacks.
+          if (doer.id != widget.currentUserId) ...[
+            _OpponentRow(
+              name: context.trArgs('creditsOnlyFor',
+                  {'name': doer.name.isNotEmpty ? doer.name : doer.email}),
+              subtitle: context.tr('completeNoDamage'),
+              icon: Icons.emoji_events_outlined,
+              iconColor: const Color(0xFFFFD700),
+              hp: null,
+              maxHp: maxHp,
+              leagueId: leagueId,
+              onTap: () => widget.onConfirm(doer, null),
+            ),
+          ] else ...[
+            // Title
+            Text(
+              context.tr('whoToAttack'),
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              canAttack
+                  ? context.tr('selectOpponentOrComplete')
+                  : attacksRemaining == 0
+                      ? context.tr('noAttacksLeftEarnCoins')
+                      : context.tr('allKoComplete'),
+              style: const TextStyle(color: Colors.white54, fontSize: 12),
+            ),
+            const SizedBox(height: 16),
+
+            // No-attack option (always shown first)
+            _OpponentRow(
+              name: context.tr('noOneJustEarn'),
+              subtitle: context.tr('completeNoDamage'),
+              icon: Icons.monetization_on_outlined,
+              iconColor: const Color(0xFFFFD700),
+              hp: null,
+              maxHp: maxHp,
+              leagueId: leagueId,
+              onTap: () => widget.onConfirm(doer, null),
+            ),
             const SizedBox(height: 8),
-            ...liveOpponents.map((m) {
-              final shieldExpiry = m.shieldByLeague[leagueId];
-              final hasShield = shieldExpiry != null &&
-                  DateTime.now().toUtc().isBefore(DateTime.parse(shieldExpiry));
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: _OpponentRow(
-                  name: m.name.isNotEmpty ? m.name : m.email,
-                  subtitle: hasShield ? '🛡️ Shield active' : null,
-                  icon: null,
-                  iconColor: null,
-                  member: m,
-                  hp: m.currentHp(leagueId, maxHp: maxHp),
-                  maxHp: maxHp,
-                  leagueId: leagueId,
-                  onTap: () => onOpponentSelected(m),
+
+            if (liveOpponents.isEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  context.tr('noLiveOpponents'),
+                  style: const TextStyle(color: Colors.white38, fontSize: 12),
+                  textAlign: TextAlign.center,
                 ),
-              );
-            }),
+              )
+            else if (!canAttack)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Column(
+                  children: [
+                    Text(
+                      context.tr('attackCapUnlockTomorrow'),
+                      style: const TextStyle(color: Colors.white38, fontSize: 12),
+                      textAlign: TextAlign.center,
+                    ),
+                    if (_canWatchAdForCoin(doer)) ...[
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: _watchingAd
+                              ? null
+                              : () => _watchAdForCoin(doer),
+                          icon: _watchingAd
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.play_circle_outline, size: 18),
+                          label: Text(context.tr('watchAdToAttack')),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFFFFD54F),
+                            side: BorderSide(
+                                color: const Color(0xFFFFC107).withAlpha(120)),
+                            padding:
+                                const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              )
+            else ...[
+              const Divider(color: Colors.white12),
+              const SizedBox(height: 8),
+              ...liveOpponents.map((m) {
+                final shieldExpiry = m.shieldByLeague[leagueId];
+                final hasShield = shieldExpiry != null &&
+                    DateTime.now().toUtc().isBefore(DateTime.parse(shieldExpiry));
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: _OpponentRow(
+                    name: m.name.isNotEmpty ? m.name : m.email,
+                    subtitle: hasShield ? context.tr('shieldActive') : null,
+                    icon: null,
+                    iconColor: null,
+                    member: m,
+                    hp: m.currentHp(leagueId, maxHp: maxHp),
+                    maxHp: maxHp,
+                    leagueId: leagueId,
+                    onTap: () => widget.onConfirm(doer, m),
+                  ),
+                );
+              }),
+            ],
+          ],
+
+          // Skip option — recurring tasks only
+          if (task.repeat != TaskRepeat.none && widget.onSkip != null) ...[
+            const SizedBox(height: 16),
+            const Divider(color: Colors.white12),
+            const SizedBox(height: 4),
+            Center(
+              child: TextButton.icon(
+                icon: const Icon(Icons.skip_next, size: 18),
+                style: TextButton.styleFrom(foregroundColor: Colors.white54),
+                label: Text(context.tr('skipOccurrence')),
+                onPressed: widget.onSkip,
+              ),
+            ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+class _DoerChip extends StatelessWidget {
+  final UserModel member;
+  final bool selected;
+  final bool isMe;
+  final VoidCallback onTap;
+
+  const _DoerChip({
+    required this.member,
+    required this.selected,
+    required this.isMe,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final label =
+        isMe ? context.tr('youTag') : (member.name.isNotEmpty ? member.name : member.email);
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 64,
+        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+        decoration: BoxDecoration(
+          color: selected
+              ? const Color(0xFF6C3CE1).withAlpha(60)
+              : Colors.white.withAlpha(10),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: selected ? const Color(0xFF9575CD) : Colors.white24,
+            width: selected ? 2 : 1,
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            FighterSprite(skin: member.characterSkin, size: 34),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: selected ? Colors.white : Colors.white60,
+                fontSize: 11,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -2990,8 +3260,9 @@ class _OpponentRow extends StatelessWidget {
 // Task picker bottom sheet
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _ArenaTaskPickerSheet extends StatelessWidget {
+class _ArenaTaskPickerSheet extends ConsumerStatefulWidget {
   final UserModel? target;
+  final UserModel? currentUser;
   final List<TaskModel> tasks;
   final int attacksRemaining;
   final int maxHp;
@@ -3001,6 +3272,7 @@ class _ArenaTaskPickerSheet extends StatelessWidget {
 
   const _ArenaTaskPickerSheet({
     required this.target,
+    required this.currentUser,
     required this.tasks,
     required this.attacksRemaining,
     required this.maxHp,
@@ -3010,12 +3282,69 @@ class _ArenaTaskPickerSheet extends StatelessWidget {
   });
 
   @override
+  ConsumerState<_ArenaTaskPickerSheet> createState() =>
+      _ArenaTaskPickerSheetState();
+}
+
+class _ArenaTaskPickerSheetState extends ConsumerState<_ArenaTaskPickerSheet> {
+  bool _watchingAd = false;
+  // Ad-for-coin rewards claimed in THIS session.
+  int _adRewardsClaimed = 0;
+
+  /// Whether the current user can still claim an ad-for-coin reward today.
+  bool _canWatchAdForCoin() {
+    final user = widget.currentUser;
+    if (user == null) return false;
+    if (!ref.read(adsServiceProvider).canOfferReward) return false;
+    final todayStr = DateTime.now().toIso8601String().substring(0, 10);
+    final storedClaims =
+        user.lastBonusAttackDate == todayStr ? user.bonusAttacksToday : 0;
+    return storedClaims + _adRewardsClaimed < kMaxAdAttacks;
+  }
+
+  Future<void> _watchAdForCoin() async {
+    final user = widget.currentUser;
+    if (user == null) return;
+    setState(() => _watchingAd = true);
+    final ads = ref.read(adsServiceProvider);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final earned = await ads.showRewarded();
+      if (!mounted) return;
+      if (!earned) {
+        messenger.showSnackBar(
+          SnackBar(content: Text(context.tr('watchAdNotReady'))),
+        );
+        return;
+      }
+      final coins =
+          await ref.read(userRepositoryProvider).grantAdAttackCoin(user.id);
+      if (!mounted) return;
+      if (coins > 0) {
+        setState(() => _adRewardsClaimed += 1);
+        messenger.showSnackBar(
+          SnackBar(content: Text(context.tr('adAttackUnlocked'))),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _watchingAd = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final target = widget.target;
+    final tasks = widget.tasks;
+    final attacksRemaining = widget.attacksRemaining;
+    final maxHp = widget.maxHp;
+    final leagueId = widget.leagueId;
+    final onTaskSelected = widget.onTaskSelected;
+    final onCompleteNoTarget = widget.onCompleteNoTarget;
     // target == null means all opponents are KO — completing for XP only
     final noTarget = target == null;
     final targetName =
-        noTarget ? '' : (target!.name.isNotEmpty ? target!.name : target!.email);
-    final hp = noTarget ? 0 : target!.currentHp(leagueId, maxHp: maxHp);
+        noTarget ? '' : (target.name.isNotEmpty ? target.name : target.email);
+    final hp = noTarget ? 0 : target.currentHp(leagueId, maxHp: maxHp);
     final hpRatio = noTarget || maxHp == 0 ? 0.0 : (hp / maxHp).clamp(0.0, 1.0);
     final hpColor = hpRatio > 0.6
         ? const Color(0xFF4CAF50)
@@ -3091,7 +3420,7 @@ class _ArenaTaskPickerSheet extends StatelessWidget {
                     border: Border.all(
                         color: const Color(0xFFE53935).withAlpha(180), width: 2),
                   ),
-                  child: FighterSprite(skin: target!.characterSkin, size: 52),
+                  child: FighterSprite(skin: target.characterSkin, size: 52),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -3117,7 +3446,7 @@ class _ArenaTaskPickerSheet extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 3),
-                      Text('$hp/$maxHp HP  ·  🪙${target!.coins}',
+                      Text('$hp/$maxHp HP  ·  🪙${target.coins}',
                           style: const TextStyle(
                               color: Colors.white38, fontSize: 11)),
                     ],
@@ -3187,6 +3516,29 @@ class _ArenaTaskPickerSheet extends StatelessWidget {
                 ],
               ),
             ),
+            if (_canWatchAdForCoin()) ...[
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _watchingAd ? null : _watchAdForCoin,
+                  icon: _watchingAd
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.play_circle_outline, size: 18),
+                  label: Text(context.tr('watchAdToAttack')),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFFFFD54F),
+                    side: BorderSide(
+                        color: const Color(0xFFFFC107).withAlpha(120)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
           ] else ...[
             Row(children: [
@@ -3383,7 +3735,7 @@ class _ArenaBattleDialog extends StatefulWidget {
   final TaskModel task;
   final bool attackerIsKO;
   final bool noAttacksLeft;
-  final Future<void> Function() onComplete;
+  final Future<int> Function() onComplete;
 
   const _ArenaBattleDialog({
     required this.attacker,
@@ -3405,6 +3757,13 @@ class _ArenaBattleDialogState extends State<_ArenaBattleDialog>
   String _resultMessage = '';
   bool _loading = false;
 
+  /// True when no damage will be dealt to an opponent — i.e. there is no
+  /// target, the attacker is K.O., or the daily attack cap is reached. In
+  /// these cases we show a solo "task complete" celebration instead of an
+  /// attack-and-hit animation against a placeholder opponent.
+  bool get _isSolo =>
+      widget.target == null || widget.attackerIsKO || widget.noAttacksLeft;
+
   @override
   void initState() {
     super.initState();
@@ -3424,25 +3783,37 @@ class _ArenaBattleDialogState extends State<_ArenaBattleDialog>
     setState(() => _phase = _ArenaBattlePhase.attacking);
     await Future.delayed(const Duration(milliseconds: 700));
     if (!mounted) return;
-    setState(() => _phase = _ArenaBattlePhase.hit);
-    _shakeCtrl.forward(from: 0);
-    await Future.delayed(const Duration(milliseconds: 600));
-    if (!mounted) return;
+    // Only play the hit/explosion when a real opponent is being damaged.
+    if (!_isSolo) {
+      setState(() => _phase = _ArenaBattlePhase.hit);
+      _shakeCtrl.forward(from: 0);
+      await Future.delayed(const Duration(milliseconds: 600));
+      if (!mounted) return;
+    }
     setState(() => _loading = true);
     try {
-      await widget.onComplete();
+      final coinsEarned = await widget.onComplete();
       final targetName = widget.target == null ? null
           : (widget.target!.name.isNotEmpty ? widget.target!.name : widget.target!.email);
+      final coinTxt = coinsEarned > 0
+          ? context.trArgs('resultCoins', {'coins': '$coinsEarned'})
+          : context.tr('resultNoCoinsToday');
       if (widget.attackerIsKO) {
-        _resultMessage = 'Task logged — you are K.O., no coins or damage dealt';
+        _resultMessage = context.tr('resultKO');
       } else if (widget.noAttacksLeft) {
-        _resultMessage = 'Task done! +🪙1 coin — attack cap reached, no damage dealt';
+        _resultMessage =
+            '$coinTxt  ·  ${context.tr('resultNoDamageCap')}';
       } else if (targetName == null) {
-        _resultMessage = '+🪙1 coin — all opponents K.O., no damage dealt';
+        _resultMessage = coinTxt;
       } else {
-        _resultMessage = '+🪙1 coin  ·  -${widget.task.effort} HP to $targetName';
+        _resultMessage =
+            '$coinTxt  ·  ${context.trArgs('resultDamage', {'dmg': '${widget.task.effort}', 'name': targetName})}';
       }
     } catch (e) {
+      if (handleQuotaError(e, context: mounted ? context : null)) {
+        if (mounted) Navigator.of(context).pop();
+        return;
+      }
       _resultMessage = 'Error: $e';
     }
     if (!mounted) return;
@@ -3474,7 +3845,9 @@ class _ArenaBattleDialogState extends State<_ArenaBattleDialog>
             Text(
               _phase == _ArenaBattlePhase.result
                   ? (widget.attackerIsKO ? '📋 Task Logged' : '🏆 Result')
-                  : (widget.attackerIsKO ? '📋 Logging Task...' : '🥊 Attacking!'),
+                  : (widget.attackerIsKO
+                      ? '📋 Logging Task...'
+                      : _isSolo ? '✅ Completing...' : '🥊 Attacking!'),
               style: const TextStyle(
                   color: Colors.white,
                   fontSize: 20,
@@ -3535,7 +3908,36 @@ class _ArenaBattleDialogState extends State<_ArenaBattleDialog>
 
             SizedBox(
               height: 140,
-              child: Row(
+              child: _isSolo
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          AnimatedSlide(
+                            offset: _phase == _ArenaBattlePhase.attacking
+                                ? const Offset(0, -0.15)
+                                : Offset.zero,
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeInOut,
+                            child: FighterSprite(
+                              skin: attackerSkin,
+                              size: 100,
+                              pose: _phase == _ArenaBattlePhase.attacking
+                                  ? FighterPose.attack
+                                  : FighterPose.idle,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(attackerName,
+                              style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600),
+                              overflow: TextOverflow.ellipsis),
+                        ],
+                      ),
+                    )
+                  : Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
@@ -3699,7 +4101,7 @@ class _ArenaBattleDialogState extends State<_ArenaBattleDialog>
                 _phase == _ArenaBattlePhase.idle
                     ? 'Preparing...'
                     : _phase == _ArenaBattlePhase.attacking
-                        ? 'Attacking!'
+                        ? (_isSolo ? 'Completing...' : 'Attacking!')
                         : 'Hit!',
                 style: const TextStyle(color: Colors.white54, fontSize: 13),
               ),

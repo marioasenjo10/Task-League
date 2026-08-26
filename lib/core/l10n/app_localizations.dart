@@ -134,12 +134,18 @@ const _en = <String, String>{
   'oneTime': 'One-time',
   // Complete / attack
   'completeTask': '⚔️ Complete "{title}"',
+  'complete': 'Complete',
   'thisOccurrence': 'This occurrence · -1 HP · +🪙1 coin',
   'dealsEarns': 'Deals 1 HP damage · Earns 🪙1 coin',
   'chooseTarget': 'Choose a target (optional):',
   'noOtherMembers': 'No other members in this league yet. Invite someone to attack!',
   'confirmAttack': 'Confirm & Attack!',
   'doneOccurrence': 'Done for this occurrence!',
+  'skipOccurrence': 'Skip this time (nobody did it)',
+  'skipOccurrenceTitle': 'Skip this occurrence?',
+  'skipOccurrenceMessage': 'This moves "{title}" to the next date without anyone completing it. No coins, no damage, no history.',
+  'skipConfirm': 'Skip',
+  'skippedToast': 'Skipped - moved to the next date',
 
   // History
   'historyTitle': 'History',
@@ -188,6 +194,25 @@ const _en = <String, String>{
   'noTasksToAttackSub': 'You have no tasks assigned. Go to the Tasks screen to assign one first.',
   'attackWith': 'Attack with this task',
   'arenaAttackSuccess': '✅ +🪙1 coin\n💥 -{dmg} HP to {name}',
+  'whoDidIt': 'Who did it?',
+  'youTag': 'You',
+  'whoToAttack': 'Who do you want to attack?',
+  'selectOpponentOrComplete': 'Select an opponent or complete without attacking.',
+  'noAttacksLeftEarnCoins': 'No attacks left today - you can still earn coins.',
+  'allKoComplete': 'All opponents are K.O.! Complete to earn coins.',
+  'noOneJustEarn': 'No one - just earn coins & XP',
+  'completeNoDamage': 'Complete the task without dealing damage',
+  'creditsOnlyFor': 'Give credit to {name} (coins & XP only)',
+  'noLiveOpponents': 'No live opponents available.',
+  'attackCapUnlockTomorrow': 'Attack cap reached - attacks unlock tomorrow.',
+  'shieldActive': '🛡️ Shield active',
+  'watchAdToAttack': 'Watch an ad for +1 coin',
+  'adAttackUnlocked': '+1 coin earned!',
+  'resultCoins': '+🪙{coins} coin',
+  'resultNoCoinsToday': 'Daily coin limit reached - no more coins today',
+  'resultNoDamageCap': 'attack cap reached, no damage dealt',
+  'resultDamage': '-{dmg} HP to {name}',
+  'resultKO': 'Task logged - you are K.O., no coins or damage dealt',
 
   // Arena
   'hpFull': 'Full HP',
@@ -197,9 +222,21 @@ const _en = <String, String>{
   // Profile
   'profile': 'Profile',
   'signOut': 'Sign Out',
+  'deleteAccount': 'Delete account',
+  'deleteAccountTitle': 'Delete account?',
+  'deleteAccountMessage':
+      'This will permanently delete your account, your progress and remove you from all leagues. This action cannot be undone.',
+  'deleteAccountConfirm': 'Delete',
+  'deleteAccountReauth':
+      'For security, please sign out and sign in again before deleting your account.',
+  'deleteAccountError': 'Could not delete your account. Please try again.',
   'chooseFighter': 'Choose your fighter',
   'profileCoins': 'coins',
   'profileToday': 'today',
+  'watchAdForCoins': 'Watch ad +{coins} coins ({left} left)',
+  'watchAdCapReached': 'No more ad rewards today',
+  'watchAdNotReady': 'No ad available right now - try again shortly.',
+  'watchAdRewarded': '+{coins} coins earned!',
 
   // Statistics
   'statistics': 'Statistics',
@@ -246,6 +283,16 @@ const _en = <String, String>{
   'errInvalidEmail': 'Please enter a valid email address.',
   'errTooManyRequests': 'Too many attempts. Please try again later.',
   'errGeneric': 'An error occurred. Please try again.',
+
+  // Quota / free-plan limit alert
+  'quotaAlertTitle': 'Service temporarily unavailable',
+  'quotaAlertMessage': 'The app reached its daily usage limit. Some actions cannot be completed right now. Please contact the administrator - quota limit exceeded.',
+  'quotaAlertButton': 'OK',
+
+  // Maintenance mode
+  'maintenanceTitle': 'We will be right back',
+  'maintenanceMessage': 'We are applying some updates to improve your experience. Please check back in a little while.',
+  'maintenanceHint': 'Thanks for your patience.',
 };
 
 const _es = <String, String>{
@@ -371,12 +418,18 @@ const _es = <String, String>{
   'oneTime': 'Única',
   // Complete / attack
   'completeTask': '⚔️ Completar "{title}"',
+  'complete': 'Completar',
   'thisOccurrence': 'Esta vez · -1 HP · +🪙1 moneda',
   'dealsEarns': 'Causa 1 HP de daño · Gana 🪙1 moneda',
   'chooseTarget': 'Elige un objetivo (opcional):',
   'noOtherMembers': 'Aún no hay más miembros. ¡Invita a alguien para atacar!',
   'confirmAttack': '¡Confirmar y atacar!',
   'doneOccurrence': '¡Hecho para esta vez!',
+  'skipOccurrence': 'Saltar esta vez (nadie la hizo)',
+  'skipOccurrenceTitle': '¿Saltar esta vez?',
+  'skipOccurrenceMessage': 'Esto mueve "{title}" a la siguiente fecha sin que nadie la complete. Sin monedas, sin daño, sin historial.',
+  'skipConfirm': 'Saltar',
+  'skippedToast': 'Saltada - movida a la siguiente fecha',
 
   // History
   'historyTitle': 'Historial',
@@ -425,6 +478,25 @@ const _es = <String, String>{
   'noTasksToAttackSub': 'No tienes tareas asignadas. Ve a Tareas para asignarte una primero.',
   'attackWith': 'Atacar con esta tarea',
   'arenaAttackSuccess': '✅ +🪙1 moneda\n💥 -{dmg} PV a {name}',
+  'whoDidIt': '¿Quién la hizo?',
+  'youTag': 'Tú',
+  'whoToAttack': '¿A quién quieres atacar?',
+  'selectOpponentOrComplete': 'Elige un rival o completa sin atacar.',
+  'noAttacksLeftEarnCoins': 'Sin ataques hoy - aún puedes ganar monedas.',
+  'allKoComplete': '¡Todos los rivales están K.O.! Completa para ganar monedas.',
+  'noOneJustEarn': 'Nadie - solo gana monedas y XP',
+  'completeNoDamage': 'Completa la tarea sin causar daño',
+  'creditsOnlyFor': 'Dar el mérito a {name} (solo monedas y XP)',
+  'noLiveOpponents': 'No hay rivales disponibles.',
+  'attackCapUnlockTomorrow': 'Límite de ataques alcanzado - se renueva mañana.',
+  'shieldActive': '🛡️ Escudo activo',
+  'watchAdToAttack': 'Ver un anuncio por +1 moneda',
+  'adAttackUnlocked': '¡+1 moneda ganada!',
+  'resultCoins': '+🪙{coins} moneda',
+  'resultNoCoinsToday': 'Límite de monedas alcanzado - no ganas más hoy',
+  'resultNoDamageCap': 'límite de ataques alcanzado, sin daño',
+  'resultDamage': '-{dmg} PV a {name}',
+  'resultKO': 'Tarea registrada - estás K.O., sin monedas ni daño',
 
   // Arena
   'hpFull': 'PV completos',
@@ -434,9 +506,21 @@ const _es = <String, String>{
   // Profile
   'profile': 'Perfil',
   'signOut': 'Cerrar sesión',
+  'deleteAccount': 'Eliminar cuenta',
+  'deleteAccountTitle': '¿Eliminar cuenta?',
+  'deleteAccountMessage':
+      'Esto eliminará permanentemente tu cuenta, tu progreso y te sacará de todas las ligas. Esta acción no se puede deshacer.',
+  'deleteAccountConfirm': 'Eliminar',
+  'deleteAccountReauth':
+      'Por seguridad, cierra sesión y vuelve a iniciar sesión antes de eliminar tu cuenta.',
+  'deleteAccountError': 'No se pudo eliminar tu cuenta. Inténtalo de nuevo.',
   'chooseFighter': 'Elige tu luchador',
   'profileCoins': 'monedas',
   'profileToday': 'hoy',
+  'watchAdForCoins': 'Ver anuncio +{coins} monedas ({left} rest.)',
+  'watchAdCapReached': 'No hay más recompensas hoy',
+  'watchAdNotReady': 'No hay anuncio disponible ahora - inténtalo en un momento.',
+  'watchAdRewarded': '¡+{coins} monedas conseguidas!',
 
   // Statistics
   'statistics': 'Estadísticas',
@@ -483,6 +567,16 @@ const _es = <String, String>{
   'errInvalidEmail': 'Por favor introduce un correo válido.',
   'errTooManyRequests': 'Demasiados intentos. Inténtalo más tarde.',
   'errGeneric': 'Ha ocurrido un error. Inténtalo de nuevo.',
+
+  // Quota / free-plan limit alert
+  'quotaAlertTitle': 'Servicio no disponible temporalmente',
+  'quotaAlertMessage': 'La app alcanzó su límite de uso diario. Algunas acciones no se pueden completar ahora mismo. Contacta al administrador - se superó el límite de cuota.',
+  'quotaAlertButton': 'Entendido',
+
+  // Maintenance mode
+  'maintenanceTitle': 'Volvemos enseguida',
+  'maintenanceMessage': 'Estamos aplicando algunas actualizaciones para mejorar tu experiencia. Vuelve a intentarlo en un momento.',
+  'maintenanceHint': 'Gracias por tu paciencia.',
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

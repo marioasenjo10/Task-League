@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../auth/models/user_model.dart';
@@ -9,6 +10,7 @@ import '../../../core/widgets/fighter_sprite.dart';
 import '../providers/calendar_sync_provider.dart';
 import '../../../core/l10n/app_localizations.dart';
 import '../../../core/l10n/locale_provider.dart';
+import '../../../core/services/ads_service.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -103,6 +105,8 @@ class _ProfileContent extends ConsumerWidget {
                   const SizedBox(height: 12),
                   // Daily attacks
                   _DailyAttacksChip(user: user),
+                  // Rewarded ad: watch to earn bonus coins (mobile only)
+                  _WatchAdButton(user: user),
                 ],
               ),
             ),
@@ -185,6 +189,9 @@ class _ProfileContent extends ConsumerWidget {
           const SizedBox(height: 12),
           // Leave current league (if in one)
           _LeaveLeagueButton(uid: user.id),
+          const SizedBox(height: 24),
+          // Permanently delete account (required by Google Play)
+          _DeleteAccountButton(),
         ],
       ),
     );
@@ -192,9 +199,85 @@ class _ProfileContent extends ConsumerWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Skin shop — shows all skins with lock/price overlay and equip button
+// Delete account — permanent, required by Google Play for apps with accounts
 // ---------------------------------------------------------------------------
 
+class _DeleteAccountButton extends ConsumerStatefulWidget {
+  @override
+  ConsumerState<_DeleteAccountButton> createState() =>
+      _DeleteAccountButtonState();
+}
+
+class _DeleteAccountButtonState extends ConsumerState<_DeleteAccountButton> {
+  bool _deleting = false;
+
+  Future<void> _confirmAndDelete() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A2E),
+        title: Text(context.tr('deleteAccountTitle'),
+            style: const TextStyle(color: Colors.white)),
+        content: Text(context.tr('deleteAccountMessage'),
+            style: const TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dctx, false),
+            child: Text(context.tr('cancel')),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dctx, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: Text(context.tr('deleteAccountConfirm')),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    setState(() => _deleting = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(authServiceProvider).deleteAccount();
+      ref.invalidate(userLeaguesProvider);
+      if (mounted) context.go('/login');
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      setState(() => _deleting = false);
+      // Session too old: Firebase requires a fresh login before deletion.
+      final msg = e.code == 'requires-recent-login'
+          ? context.tr('deleteAccountReauth')
+          : context.tr('deleteAccountError');
+      messenger.showSnackBar(SnackBar(content: Text(msg)));
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _deleting = false);
+      messenger.showSnackBar(
+        SnackBar(content: Text(context.tr('deleteAccountError'))),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextButton.icon(
+      icon: _deleting
+          ? const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.red),
+            )
+          : const Icon(Icons.delete_forever, color: Colors.red, size: 20),
+      label: Text(context.tr('deleteAccount'),
+          style: const TextStyle(color: Colors.red)),
+      onPressed: _deleting ? null : _confirmAndDelete,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Skin shop — shows all skins with lock/price overlay and equip button
+// ---------------------------------------------------------------------------
 class _SkinShop extends ConsumerWidget {
   final UserModel user;
   const _SkinShop({required this.user});
@@ -364,6 +447,99 @@ class _PriceBadge extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Watch-ad button — rewarded ad that grants bonus coins (mobile only)
+// ---------------------------------------------------------------------------
+
+class _WatchAdButton extends ConsumerStatefulWidget {
+  final UserModel user;
+  const _WatchAdButton({required this.user});
+
+  @override
+  ConsumerState<_WatchAdButton> createState() => _WatchAdButtonState();
+}
+
+class _WatchAdButtonState extends ConsumerState<_WatchAdButton> {
+  bool _busy = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final ads = ref.read(adsServiceProvider);
+    // Hidden where ads can't be offered (production web/desktop).
+    if (!ads.canOfferReward) return const SizedBox.shrink();
+
+    final todayStr = DateTime.now().toIso8601String().substring(0, 10);
+    final adsToday = widget.user.lastRewardedDate == todayStr
+        ? widget.user.todayRewardedAds
+        : 0;
+    final remaining =
+        (kMaxDailyRewardedAds - adsToday).clamp(0, kMaxDailyRewardedAds);
+    final capReached = remaining == 0;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: SizedBox(
+        width: double.infinity,
+        child: OutlinedButton.icon(
+          onPressed: (_busy || capReached) ? null : _watchAd,
+          icon: _busy
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.play_circle_outline, size: 18),
+          label: Text(
+            capReached
+                ? context.tr('watchAdCapReached')
+                : context.trArgs('watchAdForCoins', {
+                    'coins': '$kRewardedAdCoins',
+                    'left': '$remaining',
+                  }),
+          ),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: const Color(0xFFFFB74D),
+            side: BorderSide(
+              color: capReached
+                  ? Colors.white24
+                  : const Color(0xFFF57C00).withAlpha(120),
+            ),
+            padding: const EdgeInsets.symmetric(vertical: 12),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _watchAd() async {
+    setState(() => _busy = true);
+    final ads = ref.read(adsServiceProvider);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final earned = await ads.showRewarded();
+      if (!mounted) return;
+      if (!earned) {
+        messenger.showSnackBar(
+          SnackBar(content: Text(context.tr('watchAdNotReady'))),
+        );
+        return;
+      }
+      final coins =
+          await ref.read(userRepositoryProvider).addRewardCoins(widget.user.id);
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(coins > 0
+              ? context.trArgs('watchAdRewarded', {'coins': '$coins'})
+              : context.tr('watchAdCapReached')),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 }
 

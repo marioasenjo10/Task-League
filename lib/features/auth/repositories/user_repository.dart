@@ -31,6 +31,24 @@ class UserRepository {
     await _users.doc(user.id).set(user.toFirestore(), SetOptions(merge: true));
   }
 
+  /// Permanently delete all Firestore data belonging to [uid]: removes the user
+  /// from every league they are a member of, then deletes the user document.
+  /// Best-effort — used by the account deletion flow.
+  Future<void> deleteUserData(String uid) async {
+    // Remove the user from all leagues they belong to.
+    final leagues = await _db
+        .collection('leagues')
+        .where('memberIds', arrayContains: uid)
+        .get();
+    for (final doc in leagues.docs) {
+      await doc.reference.update({
+        'memberIds': FieldValue.arrayRemove([uid]),
+      });
+    }
+    // Delete the user document itself.
+    await _users.doc(uid).delete();
+  }
+
   /// Award 1 coin to the doer, respecting the daily cap of [kMaxDailyCoins].
   /// Returns the number of coins actually awarded (0 if cap reached).
   Future<int> addCoins(String uid) async {
@@ -52,6 +70,65 @@ class UserRepository {
         'coins': user.coins + awarded,
         'todayCoins': dayCoins + awarded,
         'lastCoinDate': todayStr,
+      });
+    });
+    return awarded;
+  }
+
+  /// Award bonus coins for watching a rewarded ad, respecting a separate daily
+  /// cap of [kMaxDailyRewardedAds] ads. These coins are independent of the task
+  /// coin cap ([kMaxDailyCoins]).
+  ///
+  /// Returns the coins awarded (0 if the daily rewarded-ad cap was reached).
+  Future<int> addRewardCoins(String uid) async {
+    int awarded = 0;
+    await _db.runTransaction((tx) async {
+      final ref = _users.doc(uid);
+      final snap = await tx.get(ref);
+      if (!snap.exists) return;
+
+      final user = UserModel.fromFirestore(snap.data()!, snap.id);
+      final todayStr = _todayStr();
+      final adsToday =
+          user.lastRewardedDate == todayStr ? user.todayRewardedAds : 0;
+
+      if (adsToday >= kMaxDailyRewardedAds) return;
+
+      awarded = kRewardedAdCoins;
+      tx.update(ref, {
+        'coins': user.coins + awarded,
+        'todayRewardedAds': adsToday + 1,
+        'lastRewardedDate': todayStr,
+      });
+    });
+    return awarded;
+  }
+
+  /// Reward the user with [kAdAttackCoins] coin(s) for watching an ad when the
+  /// daily attack cap is reached. This does NOT deal damage (that would be
+  /// unfair pay-to-win) — it only grants coins, up to [kMaxAdAttacks] claims
+  /// per day. Coins are independent of the task coin cap ([kMaxDailyCoins]).
+  ///
+  /// Returns the coins awarded (0 if the daily claim limit was reached).
+  Future<int> grantAdAttackCoin(String uid) async {
+    int awarded = 0;
+    await _db.runTransaction((tx) async {
+      final ref = _users.doc(uid);
+      final snap = await tx.get(ref);
+      if (!snap.exists) return;
+
+      final user = UserModel.fromFirestore(snap.data()!, snap.id);
+      final todayStr = _todayStr();
+      final claimed =
+          user.lastBonusAttackDate == todayStr ? user.bonusAttacksToday : 0;
+
+      if (claimed >= kMaxAdAttacks) return;
+
+      awarded = kAdAttackCoins;
+      tx.update(ref, {
+        'coins': user.coins + awarded,
+        'bonusAttacksToday': claimed + 1,
+        'lastBonusAttackDate': todayStr,
       });
     });
     return awarded;

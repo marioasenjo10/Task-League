@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../models/league_model.dart';
 import '../providers/league_providers.dart';
+import '../../../core/services/quota_guard.dart';
 
 // ════════════════════════════════════════════════════════════════════════════
 // Entry screen: tabbed Create / Join
@@ -109,6 +110,7 @@ class _CreateTabState extends ConsumerState<_CreateTab> {
       );
       if (mounted) context.go('/league/${league.id}');
     } catch (e) {
+      if (handleQuotaError(e, context: mounted ? context : null)) return;
       if (mounted) setState(() => _errorMessage = 'Error: $e');
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -232,6 +234,7 @@ class _JoinTabState extends ConsumerState<_JoinTab> {
         context.go('/league/${league.id}');
       }
     } catch (e) {
+      if (handleQuotaError(e, context: mounted ? context : null)) return;
       if (mounted) setState(() => _errorMessage = 'Error: $e');
     } finally {
       if (mounted) setState(() => _loading = false);

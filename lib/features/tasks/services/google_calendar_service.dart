@@ -72,13 +72,15 @@ class GoogleCalendarService {
   }
 
   /// Checks whether the current session actually has Calendar write access
-  /// by listing the primary calendar. Returns false on any permission error.
+  /// by listing events on the primary calendar. Returns false on any
+  /// permission error. Uses events.list (not calendars.get) so it works with
+  /// the minimal calendar.events scope.
   Future<bool> _verifyScopeGranted() async {
     try {
       final api = await _getApi();
       if (api == null) return false;
-      // Lightweight call — just fetch the primary calendar metadata
-      await api.calendars.get('primary');
+      // Lightweight call — fetch a single event from the primary calendar.
+      await api.events.list('primary', maxResults: 1);
       return true;
     } catch (e) {
       debugPrint('[CalendarSync] _verifyScopeGranted → failed: $e');

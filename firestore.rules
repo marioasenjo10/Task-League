@@ -2,6 +2,15 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // ── App configuration (maintenance mode, etc.) ─────────────────────────
+    // Public read so the maintenance screen can be shown even before login.
+    // No client writes — an administrator edits `config/app` in the Firebase
+    // console.
+    match /config/{docId} {
+      allow read:  if true;
+      allow write: if false;
+    }
+
     // ── Users ──────────────────────────────────────────────────────────────
     // Any authenticated user can READ any user profile (Members screen, Arena).
     // Owner can write everything on their own document.

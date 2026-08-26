@@ -84,7 +84,21 @@ class TaskService {
     return event;
   }
 
-  /// Advances a date by one repeat interval.
+  /// Skip the current occurrence of a **recurring** task without anyone
+  /// completing it.
+  ///
+  /// Only advances the schedule to the next occurrence — no coins, no damage,
+  /// no history event. Useful when nobody did the task this period (e.g. the
+  /// household is on holiday). No-op for one-time tasks.
+  Future<void> skipOccurrence(TaskModel task) async {
+    if (task.repeat == TaskRepeat.none) return;
+    final next = _nextOccurrenceDate(task);
+    final advanced = task.scheduledAt != null
+        ? task.copyWith(scheduledAt: next)
+        : task.copyWith(dueDate: next);
+    await _taskRepo.updateTask(advanced);
+  }
+
   static DateTime _advanceDate(DateTime d, TaskRepeat repeat) {
     switch (repeat) {
       case TaskRepeat.daily:
