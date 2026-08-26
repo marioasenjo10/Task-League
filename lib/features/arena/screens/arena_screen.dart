@@ -16,8 +16,12 @@ import '../../tasks/models/task_model.dart';
 import '../../tasks/providers/task_service_provider.dart';
 import '../../tasks/repositories/task_repository.dart';
 import '../../stats/providers/stats_providers.dart'
-    show periodRankingProvider, previousPeriodRankingProvider,
-         PeriodRankEntry, currentPeriodRange, isStartOfPeriod;
+    show
+        periodRankingProvider,
+        previousPeriodRankingProvider,
+        PeriodRankEntry,
+        currentPeriodRange,
+        isStartOfPeriod;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Main screen
@@ -70,32 +74,50 @@ class _ArenaScreenState extends ConsumerState<ArenaScreen>
       backgroundColor: const Color(0xFF0D0D1A),
       appBar: AppBar(
         backgroundColor: const Color(0xFF0D0D1A),
-        title: Text(context.tr('arena'),
-            style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 2)),
+        title: Text(
+          context.tr('arena'),
+          style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 2),
+        ),
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: const Color(0xFF6C3CE1),
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white38,
-          tabs: const [
-            Tab(icon: Icon(Icons.sports_kabaddi, size: 18), text: 'Ring'),
-            Tab(icon: Icon(Icons.people, size: 18), text: 'Players'),
-            Tab(icon: Icon(Icons.emoji_events, size: 18), text: 'Ranking'),
+          tabs: [
+            Tab(
+              icon: const Icon(Icons.sports_kabaddi, size: 18),
+              text: context.tr('arenaTabRing'),
+            ),
+            Tab(
+              icon: const Icon(Icons.people, size: 18),
+              text: context.tr('arenaTabPlayers'),
+            ),
+            Tab(
+              icon: const Icon(Icons.emoji_events, size: 18),
+              text: context.tr('arenaTabRanking'),
+            ),
           ],
         ),
       ),
       body: leagueAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(
-            child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text(e.toString(),
-                    style: const TextStyle(color: Colors.white54)))),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              e.toString(),
+              style: const TextStyle(color: Colors.white54),
+            ),
+          ),
+        ),
         data: (league) {
           if (league == null) {
-            return const Center(
-                child: Text('League not found.',
-                    style: TextStyle(color: Colors.white54)));
+            return Center(
+              child: Text(
+                context.tr('leagueNotFound'),
+                style: const TextStyle(color: Colors.white54),
+              ),
+            );
           }
           final maxHp = maxHpForType(league.competitionType);
           return TabBarView(
@@ -110,10 +132,7 @@ class _ArenaScreenState extends ConsumerState<ArenaScreen>
                     _checkForHits(members, widget.leagueId, maxHp),
               ),
               // ── Tab 2: Players ────────────────────────────────────────
-              _PlayersTab(
-                leagueId: widget.leagueId,
-                maxHp: maxHp,
-              ),
+              _PlayersTab(leagueId: widget.leagueId, maxHp: maxHp),
               // ── Tab 3: Ranking ────────────────────────────────────────
               _RankingTab(
                 leagueId: widget.leagueId,
@@ -153,25 +172,34 @@ class _RingTab extends ConsumerWidget {
     return membersAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(
-          child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Text(e.toString(),
-                  style: const TextStyle(color: Colors.white54)))),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            e.toString(),
+            style: const TextStyle(color: Colors.white54),
+          ),
+        ),
+      ),
       data: (members) {
         if (members.isEmpty) {
-          return const Center(
-              child: Text('No fighters yet.',
-                  style: TextStyle(color: Colors.white54)));
+          return Center(
+            child: Text(
+              context.tr('noFightersYet'),
+              style: const TextStyle(color: Colors.white54),
+            ),
+          );
         }
         for (final m in members) {
           fighterKeys.putIfAbsent(m.id, () => GlobalKey<_FighterSlotState>());
         }
         onCheckHits(members);
 
-        final sorted = [...members]..sort((a, b) {
+        final sorted = [...members]
+          ..sort((a, b) {
             if (a.id == currentUid) return -1;
             if (b.id == currentUid) return 1;
-            return b.currentHp(leagueId, maxHp: maxHp)
+            return b
+                .currentHp(leagueId, maxHp: maxHp)
                 .compareTo(a.currentHp(leagueId, maxHp: maxHp));
           });
 
@@ -207,13 +235,22 @@ class _RankingTabState extends ConsumerState<_RankingTab> {
   @override
   Widget build(BuildContext context) {
     final rankAsync = ref.watch(
-        periodRankingProvider((leagueId: widget.leagueId, type: widget.leagueType)));
+      periodRankingProvider((
+        leagueId: widget.leagueId,
+        type: widget.leagueType,
+      )),
+    );
     final prevRankAsync = ref.watch(
-        previousPeriodRankingProvider((leagueId: widget.leagueId, type: widget.leagueType)));
+      previousPeriodRankingProvider((
+        leagueId: widget.leagueId,
+        type: widget.leagueType,
+      )),
+    );
     final currentUid = ref.watch(authStateProvider).valueOrNull?.uid;
     final range = currentPeriodRange(widget.leagueType);
-    final periodLabel =
-        widget.leagueType == CompetitionType.weekly ? 'This week' : 'This month';
+    final periodLabel = widget.leagueType == CompetitionType.weekly
+        ? context.tr('periodThisWeek')
+        : context.tr('periodThisMonth');
     final startLabel =
         '${range.start.day.toString().padLeft(2, '0')}/${range.start.month.toString().padLeft(2, '0')}';
 
@@ -222,13 +259,19 @@ class _RankingTabState extends ConsumerState<_RankingTab> {
     return rankAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(
-          child: Text(e.toString(),
-              style: const TextStyle(color: Colors.white54))),
+        child: Text(
+          e.toString(),
+          style: const TextStyle(color: Colors.white54),
+        ),
+      ),
       data: (ranking) {
         if (ranking.isEmpty) {
-          return const Center(
-              child: Text('No fighters yet.',
-                  style: TextStyle(color: Colors.white54)));
+          return Center(
+            child: Text(
+              context.tr('noFightersYet'),
+              style: const TextStyle(color: Colors.white54),
+            ),
+          );
         }
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
@@ -243,16 +286,27 @@ class _RankingTabState extends ConsumerState<_RankingTab> {
               ),
 
             // ── Period header ─────────────────────────────────────
-            Row(children: [
-              const Icon(Icons.emoji_events,
-                  color: Color(0xFFFFD700), size: 18),
-              const SizedBox(width: 8),
-              Text(
-                '$periodLabel · since $startLabel',
-                style: const TextStyle(
-                    color: Colors.white54, fontSize: 12, letterSpacing: 1),
-              ),
-            ]),
+            Row(
+              children: [
+                const Icon(
+                  Icons.emoji_events,
+                  color: Color(0xFFFFD700),
+                  size: 18,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  context.trArgs('periodSince', {
+                    'label': periodLabel,
+                    'date': startLabel,
+                  }),
+                  style: const TextStyle(
+                    color: Colors.white54,
+                    fontSize: 12,
+                    letterSpacing: 1,
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 20),
 
             // ── Podium ────────────────────────────────────────────
@@ -262,11 +316,13 @@ class _RankingTabState extends ConsumerState<_RankingTab> {
             const SizedBox(height: 24),
 
             // ── Full list (all members, ranked) ───────────────────
-            ...ranking.asMap().entries.map((e) => _RankRow(
-                  entry: e.value,
-                  rank: e.key + 1,
-                  isCurrentUser: e.value.member.id == currentUid,
-                )),
+            ...ranking.asMap().entries.map(
+              (e) => _RankRow(
+                entry: e.value,
+                rank: e.key + 1,
+                isCurrentUser: e.value.member.id == currentUid,
+              ),
+            ),
           ],
         );
       },
@@ -293,7 +349,9 @@ class _PreviousPeriodBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = leagueType == CompetitionType.weekly ? 'Last week' : 'Last month';
+    final label = leagueType == CompetitionType.weekly
+        ? context.tr('periodResultsLastWeek')
+        : context.tr('periodResultsLastMonth');
 
     return prevRankAsync.when(
       loading: () => const SizedBox.shrink(),
@@ -303,9 +361,9 @@ class _PreviousPeriodBanner extends StatelessWidget {
         final anyActivity = prev.any((e) => e.tasks > 0);
         if (!anyActivity) return const SizedBox.shrink();
 
-        final winner  = prev[0];
-        final second  = prev.length > 1 ? prev[1] : null;
-        final third   = prev.length > 2 ? prev[2] : null;
+        final winner = prev[0];
+        final second = prev.length > 1 ? prev[1] : null;
+        final third = prev.length > 2 ? prev[2] : null;
         final youEntry = prev.firstWhere(
           (e) => e.member.id == currentUid,
           orElse: () => prev.last,
@@ -348,7 +406,7 @@ class _PreviousPeriodBanner extends StatelessWidget {
                       const Text('🏆', style: TextStyle(fontSize: 16)),
                       const SizedBox(width: 8),
                       Text(
-                        '$label\'s results',
+                        label,
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 14,
@@ -358,8 +416,11 @@ class _PreviousPeriodBanner extends StatelessWidget {
                       ),
                       const Spacer(),
                       IconButton(
-                        icon: const Icon(Icons.close,
-                            color: Colors.white38, size: 16),
+                        icon: const Icon(
+                          Icons.close,
+                          color: Colors.white38,
+                          size: 16,
+                        ),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
                         onPressed: onDismiss,
@@ -374,23 +435,29 @@ class _PreviousPeriodBanner extends StatelessWidget {
                   child: Row(
                     children: [
                       _BannerPodiumSlot(
-                        entry: winner, rank: 1,
-                        medal: '🥇', color: const Color(0xFFFFD700),
+                        entry: winner,
+                        rank: 1,
+                        medal: '🥇',
+                        color: const Color(0xFFFFD700),
                         isCurrentUser: winner.member.id == currentUid,
                       ),
                       if (second != null) ...[
                         const SizedBox(width: 8),
                         _BannerPodiumSlot(
-                          entry: second, rank: 2,
-                          medal: '🥈', color: const Color(0xFFB0BEC5),
+                          entry: second,
+                          rank: 2,
+                          medal: '🥈',
+                          color: const Color(0xFFB0BEC5),
                           isCurrentUser: second.member.id == currentUid,
                         ),
                       ],
                       if (third != null) ...[
                         const SizedBox(width: 8),
                         _BannerPodiumSlot(
-                          entry: third, rank: 3,
-                          medal: '🥉', color: const Color(0xFFCD7F32),
+                          entry: third,
+                          rank: 3,
+                          medal: '🥉',
+                          color: const Color(0xFFCD7F32),
                           isCurrentUser: third.member.id == currentUid,
                         ),
                       ],
@@ -410,23 +477,30 @@ class _PreviousPeriodBanner extends StatelessWidget {
                       children: [
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: const Color(0xFF6C3CE1).withAlpha(80),
                             borderRadius: BorderRadius.circular(4),
                           ),
-                          child: const Text('YOU',
-                              style: TextStyle(
-                                  color: Color(0xFFB39DDB),
-                                  fontSize: 8,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 1)),
+                          child: const Text(
+                            'YOU',
+                            style: TextStyle(
+                              color: Color(0xFFB39DDB),
+                              fontSize: 8,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1,
+                            ),
+                          ),
                         ),
                         const SizedBox(width: 8),
                         Text(
                           '#$yourRank · ${youEntry.tasks} tasks · ${youEntry.damage} dmg',
                           style: const TextStyle(
-                              color: Colors.white54, fontSize: 11),
+                            color: Colors.white54,
+                            fontSize: 11,
+                          ),
                         ),
                       ],
                     ),
@@ -483,8 +557,7 @@ class _BannerPodiumSlot extends StatelessWidget {
             ),
             Text(
               '${entry.tasks} tasks',
-              style:
-                  const TextStyle(fontSize: 9, color: Colors.white38),
+              style: const TextStyle(fontSize: 9, color: Colors.white38),
             ),
           ],
         ),
@@ -504,9 +577,9 @@ class _Podium extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final first  = ranking[0];
+    final first = ranking[0];
     final second = ranking.length > 1 ? ranking[1] : null;
-    final third  = ranking.length > 2 ? ranking[2] : null;
+    final third = ranking.length > 2 ? ranking[2] : null;
 
     return IntrinsicHeight(
       child: Row(
@@ -515,8 +588,11 @@ class _Podium extends StatelessWidget {
           if (second != null)
             Expanded(
               child: _PodiumSlot(
-                entry: second, rank: 2, blockHeight: 80,
-                medal: '🥈', color: const Color(0xFFB0BEC5),
+                entry: second,
+                rank: 2,
+                blockHeight: 80,
+                medal: '🥈',
+                color: const Color(0xFFB0BEC5),
                 isCurrentUser: second.member.id == currentUid,
               ),
             )
@@ -524,16 +600,22 @@ class _Podium extends StatelessWidget {
             const Expanded(child: SizedBox()),
           Expanded(
             child: _PodiumSlot(
-              entry: first, rank: 1, blockHeight: 110,
-              medal: '🥇', color: const Color(0xFFFFD700),
+              entry: first,
+              rank: 1,
+              blockHeight: 110,
+              medal: '🥇',
+              color: const Color(0xFFFFD700),
               isCurrentUser: first.member.id == currentUid,
             ),
           ),
           if (third != null)
             Expanded(
               child: _PodiumSlot(
-                entry: third, rank: 3, blockHeight: 60,
-                medal: '🥉', color: const Color(0xFFCD7F32),
+                entry: third,
+                rank: 3,
+                blockHeight: 60,
+                medal: '🥉',
+                color: const Color(0xFFCD7F32),
                 isCurrentUser: third.member.id == currentUid,
               ),
             )
@@ -578,32 +660,38 @@ class _PodiumSlot extends StatelessWidget {
             FighterSprite(skin: entry.member.characterSkin, size: 52),
             if (isCurrentUser)
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
                 decoration: BoxDecoration(
                   color: const Color(0xFF6C3CE1),
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: const Text('YOU',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 7,
-                        fontWeight: FontWeight.bold)),
+                child: const Text(
+                  'YOU',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 7,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
           ],
         ),
         const SizedBox(height: 5),
-        Text(name,
-            style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                color: isCurrentUser ? color : Colors.white70),
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1,
-            textAlign: TextAlign.center),
-        Text('${entry.tasks} tasks',
-            style:
-                const TextStyle(fontSize: 10, color: Colors.white38)),
+        Text(
+          name,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+            color: isCurrentUser ? color : Colors.white70,
+          ),
+          overflow: TextOverflow.ellipsis,
+          maxLines: 1,
+          textAlign: TextAlign.center,
+        ),
+        Text(
+          '${entry.tasks} tasks',
+          style: const TextStyle(fontSize: 10, color: Colors.white38),
+        ),
         const SizedBox(height: 4),
         Container(
           height: blockHeight,
@@ -613,16 +701,18 @@ class _PodiumSlot extends StatelessWidget {
               end: Alignment.bottomCenter,
               colors: [color.withAlpha(80), color.withAlpha(25)],
             ),
-            borderRadius:
-                const BorderRadius.vertical(top: Radius.circular(8)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
             border: Border.all(color: color.withAlpha(120)),
           ),
           child: Center(
-            child: Text('#$rank',
-                style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: color.withAlpha(200))),
+            child: Text(
+              '#$rank',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: color.withAlpha(200),
+              ),
+            ),
           ),
         ),
       ],
@@ -653,10 +743,10 @@ class _RankRow extends StatelessWidget {
     final medalEmoji = rank == 1
         ? '🥇'
         : rank == 2
-            ? '🥈'
-            : rank == 3
-                ? '🥉'
-                : null;
+        ? '🥈'
+        : rank == 3
+        ? '🥉'
+        : null;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -678,67 +768,79 @@ class _RankRow extends StatelessWidget {
             SizedBox(
               width: 36,
               child: medalEmoji != null
-                  ? Text(medalEmoji,
+                  ? Text(
+                      medalEmoji,
                       style: const TextStyle(fontSize: 20),
-                      textAlign: TextAlign.center)
-                  : Text('#$rank',
+                      textAlign: TextAlign.center,
+                    )
+                  : Text(
+                      '#$rank',
                       style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.white38,
-                          fontWeight: FontWeight.bold),
-                      textAlign: TextAlign.center),
+                        fontSize: 12,
+                        color: Colors.white38,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
             ),
             const SizedBox(width: 8),
             SizedBox(
               width: 40,
               height: 40,
-              child: FighterSprite(
-                  skin: entry.member.characterSkin, size: 40),
+              child: FighterSprite(skin: entry.member.characterSkin, size: 40),
             ),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(children: [
-                    if (isCurrentUser) ...[
-                      Container(
-                        margin: const EdgeInsets.only(right: 5),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 5, vertical: 1),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF6C3CE1).withAlpha(120),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: const Text('YOU',
+                  Row(
+                    children: [
+                      if (isCurrentUser) ...[
+                        Container(
+                          margin: const EdgeInsets.only(right: 5),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 5,
+                            vertical: 1,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF6C3CE1).withAlpha(120),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            'YOU',
                             style: TextStyle(
-                                color: Color(0xFFB39DDB),
-                                fontSize: 8,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 1)),
+                              color: Color(0xFFB39DDB),
+                              fontSize: 8,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                        ),
+                      ],
+                      Flexible(
+                        child: Text(
+                          name,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
-                    Flexible(
-                      child: Text(name,
-                          style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white),
-                          overflow: TextOverflow.ellipsis),
-                    ),
-                  ]),
+                  ),
                   const SizedBox(height: 2),
                   Text(
                     '${entry.tasks} tasks · ${entry.damage} dmg · 🪙${entry.coins}',
-                    style: const TextStyle(
-                        fontSize: 10, color: Colors.white38),
+                    style: const TextStyle(fontSize: 10, color: Colors.white38),
                   ),
                 ],
               ),
             ),
             Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 10, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
                 color: const Color(0xFF6C3CE1).withAlpha(30),
                 borderRadius: BorderRadius.circular(20),
@@ -746,9 +848,10 @@ class _RankRow extends StatelessWidget {
               child: Text(
                 '${entry.tasks}',
                 style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFFB39DDB)),
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFFB39DDB),
+                ),
               ),
             ),
           ],
@@ -792,20 +895,32 @@ class _ArenaLayoutState extends ConsumerState<_ArenaLayout> {
     final shieldExpiry = target.shieldByLeague[widget.leagueId];
     if (shieldExpiry != null &&
         DateTime.now().toUtc().isBefore(DateTime.parse(shieldExpiry))) {
-      final remaining = DateTime.parse(shieldExpiry).difference(DateTime.now().toUtc());
+      final remaining = DateTime.parse(
+        shieldExpiry,
+      ).difference(DateTime.now().toUtc());
       final h = remaining.inHours;
       final m = remaining.inMinutes % 60;
       final timeStr = h > 0 ? '${h}h ${m}m' : '${m}m';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('🛡️ ${target.name} has a shield active for $timeStr — your attack will be blocked!'),
+          content: Text(
+            context.trArgs('shieldBlockedMsg', {
+              'name': target.name,
+              'time': timeStr,
+            }),
+          ),
           backgroundColor: const Color(0xFF1565C0),
           duration: const Duration(seconds: 3),
           action: SnackBarAction(
-            label: 'Attack anyway',
+            label: context.tr('attackAnyway'),
             textColor: Colors.white,
-            onPressed: () =>
-                showArenaAttackDialog(context, ref, target, widget.leagueId, widget.maxHp),
+            onPressed: () => showArenaAttackDialog(
+              context,
+              ref,
+              target,
+              widget.leagueId,
+              widget.maxHp,
+            ),
           ),
         ),
       );
@@ -841,10 +956,14 @@ class _ArenaLayoutState extends ConsumerState<_ArenaLayout> {
     if (me != null) {
       final todayStr = DateTime.now().toIso8601String().substring(0, 10);
       final attacksUsed = (me.lastAttackDate == todayStr) ? me.todayAttacks : 0;
-      myAttacksLeft = (kMaxDailyAttacks - attacksUsed).clamp(0, kMaxDailyAttacks);
+      myAttacksLeft = (kMaxDailyAttacks - attacksUsed).clamp(
+        0,
+        kMaxDailyAttacks,
+      );
     }
     final opponentIsAlive =
-        opponent != null && opponent.currentHp(widget.leagueId, maxHp: widget.maxHp) > 0;
+        opponent != null &&
+        opponent.currentHp(widget.leagueId, maxHp: widget.maxHp) > 0;
 
     return SingleChildScrollView(
       child: Column(
@@ -874,50 +993,60 @@ class _ArenaLayoutState extends ConsumerState<_ArenaLayout> {
               // ── Opponent switcher arrows ─────────────────────────────────
               if (hasMultipleOpponents)
                 Positioned.fill(
-                  child: LayoutBuilder(builder: (context, constraints) {
-                    return Align(
-                      alignment: Alignment(0, 0.05),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            // ← prev opponent
-                            _SwitchArrow(
-                              icon: Icons.chevron_left,
-                              onTap: () => setState(() {
-                                _opponentIndex = (_opponentIndex - 1 + opponents.length) % opponents.length;
-                              }),
-                            ),
-                            // opponent counter pill
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withAlpha(160),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: Colors.white.withAlpha(30)),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      return Align(
+                        alignment: Alignment(0, 0.05),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              // ← prev opponent
+                              _SwitchArrow(
+                                icon: Icons.chevron_left,
+                                onTap: () => setState(() {
+                                  _opponentIndex =
+                                      (_opponentIndex - 1 + opponents.length) %
+                                      opponents.length;
+                                }),
                               ),
-                              child: Text(
-                                '${_opponentIndex + 1} / ${opponents.length}',
-                                style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
+                              // opponent counter pill
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withAlpha(160),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: Colors.white.withAlpha(30),
+                                  ),
+                                ),
+                                child: Text(
+                                  '${_opponentIndex + 1} / ${opponents.length}',
+                                  style: const TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
-                            ),
-                            // → next opponent
-                            _SwitchArrow(
-                              icon: Icons.chevron_right,
-                              onTap: () => setState(() {
-                                _opponentIndex = (_opponentIndex + 1) % opponents.length;
-                              }),
-                            ),
-                          ],
+                              // → next opponent
+                              _SwitchArrow(
+                                icon: Icons.chevron_right,
+                                onTap: () => setState(() {
+                                  _opponentIndex =
+                                      (_opponentIndex + 1) % opponents.length;
+                                }),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    );
-                  }),
+                      );
+                    },
+                  ),
                 ),
             ],
           ),
@@ -938,9 +1067,9 @@ class _ArenaLayoutState extends ConsumerState<_ArenaLayout> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  const Text(
-                    'OTHER FIGHTERS',
-                    style: TextStyle(
+                  Text(
+                    context.tr('otherFighters'),
+                    style: const TextStyle(
                       color: Colors.white38,
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
@@ -990,11 +1119,20 @@ class _ArenaLayoutState extends ConsumerState<_ArenaLayout> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _LegendDot(color: const Color(0xFF4CAF50), label: context.tr('hpFull')),
+              _LegendDot(
+                color: const Color(0xFF4CAF50),
+                label: context.tr('hpFull'),
+              ),
               const SizedBox(width: 16),
-              _LegendDot(color: const Color(0xFFFFC107), label: context.tr('hpInjured')),
+              _LegendDot(
+                color: const Color(0xFFFFC107),
+                label: context.tr('hpInjured'),
+              ),
               const SizedBox(width: 16),
-              _LegendDot(color: const Color(0xFFE53935), label: context.tr('hpCritical')),
+              _LegendDot(
+                color: const Color(0xFFE53935),
+                label: context.tr('hpCritical'),
+              ),
             ],
           ),
           const SizedBox(height: 8),
@@ -1063,110 +1201,128 @@ class _RingWithFighters extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, constraints) {
-      final w = constraints.maxWidth;
-      // h is fixed to the image aspect ratio so the ring floor is always
-      // at the same relative position regardless of window width.
-      final h = (w * 1.35).clamp(0.0, MediaQuery.of(context).size.height * 0.80);
-      // ringAlign pushes the image down so the canvas floor is visible.
-      // Y=0.10 means slightly below centre — tune if needed.
-      const ringAlign = Alignment(0.0, 0.10);
-      final spriteSize = (h * 0.26).clamp(85.0, 140.0);
-      // Fighters stand at ~36% up from the bottom of the container.
-      final floorPad = h * 0.36;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final w = constraints.maxWidth;
+        // h is fixed to the image aspect ratio so the ring floor is always
+        // at the same relative position regardless of window width.
+        final h = (w * 1.35).clamp(
+          0.0,
+          MediaQuery.of(context).size.height * 0.80,
+        );
+        // ringAlign pushes the image down so the canvas floor is visible.
+        // Y=0.10 means slightly below centre — tune if needed.
+        const ringAlign = Alignment(0.0, 0.10);
+        final spriteSize = (h * 0.26).clamp(85.0, 140.0);
+        // Fighters stand at ~36% up from the bottom of the container.
+        final floorPad = h * 0.36;
 
-      return SizedBox(
-        width: w,
-        height: h,
-        child: Stack(
-          clipBehavior: Clip.hardEdge,
-          children: [
-            // ── Ring background ────────────────────────────────────────
-            Positioned.fill(
-              child: Image.asset(
-                'assets/images/old_ring.png',
-                fit: BoxFit.cover,
-                alignment: ringAlign,
-              ),
-            ),
-            // Dark vignette: heavier at top (sky) and bottom edge so
-            // fighters blend naturally onto the canvas.
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    stops: const [0.0, 0.35, 0.70, 1.0],
-                    colors: [
-                      Colors.black.withAlpha(140),
-                      Colors.black.withAlpha(10),
-                      Colors.black.withAlpha(30),
-                      Colors.black.withAlpha(180),
-                    ],
-                  ),
+        return SizedBox(
+          width: w,
+          height: h,
+          child: Stack(
+            clipBehavior: Clip.hardEdge,
+            children: [
+              // ── Ring background ────────────────────────────────────────
+              Positioned.fill(
+                child: Image.asset(
+                  'assets/images/old_ring.png',
+                  fit: BoxFit.cover,
+                  alignment: ringAlign,
                 ),
               ),
-            ),
-
-            // ── Left fighter ───────────────────────────────────────────
-            if (left != null)
-              Positioned(
-                left: w * 0.20,
-                // Subtract the transparent footer so the visible feet land on the floor
-                bottom: floorPad - FighterSprite(skin: left!.characterSkin, size: spriteSize)
-                    .feetPaddingPixels(spriteSize),
-                child: GestureDetector(
-                  onTap: (left!.id == currentUid ||
-                          left!.currentHp(leagueId, maxHp: maxHp) <= 0)
-                      ? null
-                      : () => onFighterTap?.call(left!),
-                  child: _FighterSlot(
-                    key: fighterKeys[left!.id],
-                    user: left!,
-                    isCurrentUser: left!.id == currentUid,
-                    facingRight: true,
-                    size: spriteSize,
-                    leagueId: leagueId,
-                    maxHp: maxHp,
-                    isAttackable: left!.id != currentUid &&
-                        left!.currentHp(leagueId, maxHp: maxHp) > 0,
-                  ),
-                ),
-              ),
-
-            // ── Right fighter ──────────────────────────────────────────
-            if (right != null)
-              Positioned(
-                right: w * 0.20,
-                bottom: floorPad - FighterSprite(skin: right!.characterSkin, size: spriteSize)
-                    .feetPaddingPixels(spriteSize),
-                child: GestureDetector(
-                  onTap: (right!.id == currentUid ||
-                          right!.currentHp(leagueId, maxHp: maxHp) <= 0)
-                      ? null
-                      : () => onFighterTap?.call(right!),
-                  child: _PulsingGlow(
-                    active: right!.id != currentUid &&
-                        right!.currentHp(leagueId, maxHp: maxHp) > 0,
-                    child: _FighterSlot(
-                      key: fighterKeys[right!.id],
-                      user: right!,
-                      isCurrentUser: right!.id == currentUid,
-                      facingRight: false,
-                      size: spriteSize,
-                      leagueId: leagueId,
-                      maxHp: maxHp,
-                      isAttackable: right!.id != currentUid &&
-                          right!.currentHp(leagueId, maxHp: maxHp) > 0,
+              // Dark vignette: heavier at top (sky) and bottom edge so
+              // fighters blend naturally onto the canvas.
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      stops: const [0.0, 0.35, 0.70, 1.0],
+                      colors: [
+                        Colors.black.withAlpha(140),
+                        Colors.black.withAlpha(10),
+                        Colors.black.withAlpha(30),
+                        Colors.black.withAlpha(180),
+                      ],
                     ),
                   ),
                 ),
               ),
-          ],
-        ),
-      );
-    });
+
+              // ── Left fighter ───────────────────────────────────────────
+              if (left != null)
+                Positioned(
+                  left: w * 0.20,
+                  // Subtract the transparent footer so the visible feet land on the floor
+                  bottom:
+                      floorPad -
+                      FighterSprite(
+                        skin: left!.characterSkin,
+                        size: spriteSize,
+                      ).feetPaddingPixels(spriteSize),
+                  child: GestureDetector(
+                    onTap:
+                        (left!.id == currentUid ||
+                            left!.currentHp(leagueId, maxHp: maxHp) <= 0)
+                        ? null
+                        : () => onFighterTap?.call(left!),
+                    child: _FighterSlot(
+                      key: fighterKeys[left!.id],
+                      user: left!,
+                      isCurrentUser: left!.id == currentUid,
+                      facingRight: true,
+                      size: spriteSize,
+                      leagueId: leagueId,
+                      maxHp: maxHp,
+                      isAttackable:
+                          left!.id != currentUid &&
+                          left!.currentHp(leagueId, maxHp: maxHp) > 0,
+                    ),
+                  ),
+                ),
+
+              // ── Right fighter ──────────────────────────────────────────
+              if (right != null)
+                Positioned(
+                  right: w * 0.20,
+                  bottom:
+                      floorPad -
+                      FighterSprite(
+                        skin: right!.characterSkin,
+                        size: spriteSize,
+                      ).feetPaddingPixels(spriteSize),
+                  child: GestureDetector(
+                    onTap:
+                        (right!.id == currentUid ||
+                            right!.currentHp(leagueId, maxHp: maxHp) <= 0)
+                        ? null
+                        : () => onFighterTap?.call(right!),
+                    child: _PulsingGlow(
+                      active:
+                          right!.id != currentUid &&
+                          right!.currentHp(leagueId, maxHp: maxHp) > 0,
+                      child: _FighterSlot(
+                        key: fighterKeys[right!.id],
+                        user: right!,
+                        isCurrentUser: right!.id == currentUid,
+                        facingRight: false,
+                        size: spriteSize,
+                        leagueId: leagueId,
+                        maxHp: maxHp,
+                        isAttackable:
+                            right!.id != currentUid &&
+                            right!.currentHp(leagueId, maxHp: maxHp) > 0,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
   }
 }
 
@@ -1180,10 +1336,7 @@ class _ExplosionBurst extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(
-      size: Size(size, size),
-      painter: _ExplosionPainter(),
-    );
+    return CustomPaint(size: Size(size, size), painter: _ExplosionPainter());
   }
 }
 
@@ -1197,7 +1350,11 @@ class _ExplosionPainter extends CustomPainter {
     // Core circle — bright yellow-orange
     final corePaint = Paint()
       ..shader = RadialGradient(
-        colors: [const Color(0xFFFFFFCC), const Color(0xFFFF9800), const Color(0xFFE53935)],
+        colors: [
+          const Color(0xFFFFFFCC),
+          const Color(0xFFFF9800),
+          const Color(0xFFE53935),
+        ],
         stops: const [0.0, 0.5, 1.0],
       ).createShader(Rect.fromCircle(center: Offset(cx, cy), radius: r * 0.55));
     canvas.drawCircle(Offset(cx, cy), r * 0.55, corePaint);
@@ -1270,8 +1427,9 @@ class _PulsingGlowState extends State<_PulsingGlow>
             borderRadius: BorderRadius.circular(50),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFFE53935)
-                    .withAlpha((50 + 90 * _anim.value).round()),
+                color: const Color(
+                  0xFFE53935,
+                ).withAlpha((50 + 90 * _anim.value).round()),
                 blurRadius: 18 + 14 * _anim.value,
                 spreadRadius: 2 + 4 * _anim.value,
               ),
@@ -1377,16 +1535,22 @@ class _FighterSlotState extends State<_FighterSlot>
       animation: Listenable.merge([_hitCtrl, _idleCtrl]),
       builder: (context, child) {
         final t = _hitCtrl.value;
-        final shake = t < 0.7 ? math.sin(t * math.pi * 10) * 8.0 * (1 - t) : 0.0;
+        final shake = t < 0.7
+            ? math.sin(t * math.pi * 10) * 8.0 * (1 - t)
+            : 0.0;
         final tintAlpha = (math.sin(t * math.pi) * 160).clamp(0, 160).toInt();
 
         // ── Idle pendulum (only when not being hit and not KO) ──────────────
         // Two sine waves: vertical bob (full cycle) + lateral lean (half cycle)
         // giving that classic boxing weight-shift footwork feel.
         final idle = _idleCtrl.value * 2 * math.pi; // 0 → 2π per cycle
-        final idleBobY  = isKO ? 0.0 : math.sin(idle)       * 2.8; // ±2.8 px up/down
-        final idleLeanX = isKO ? 0.0 : math.sin(idle * 0.5) * 1.6; // ±1.6 px side
-        final idleRotZ  = isKO ? 0.0 : math.sin(idle * 0.5) * 0.018; // slight tilt
+        final idleBobY = isKO ? 0.0 : math.sin(idle) * 2.8; // ±2.8 px up/down
+        final idleLeanX = isKO
+            ? 0.0
+            : math.sin(idle * 0.5) * 1.6; // ±1.6 px side
+        final idleRotZ = isKO
+            ? 0.0
+            : math.sin(idle * 0.5) * 0.018; // slight tilt
 
         final totalOffsetX = shake + idleLeanX;
         final totalOffsetY = idleBobY;
@@ -1396,154 +1560,174 @@ class _FighterSlotState extends State<_FighterSlot>
           child: Transform.rotate(
             angle: idleRotZ,
             child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-            width: s,
-            height: s,
-            child: Stack(
-              alignment: Alignment.bottomCenter,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                // ── Ground shadow ellipse — pulses with the bob ──────────
-                Positioned(
-                  // Offset the shadow up by the PNG's transparent footer
-                  // so it always sits under the visible feet, not the SizedBox edge.
-                  bottom: 2 + FighterSprite(skin: user.characterSkin, size: s)
-                      .feetPaddingPixels(s),
-                  child: Container(
-                    // shadow shrinks slightly when fighter bobs up
-                    width: s * 0.6 * (1.0 - idleBobY * 0.015).clamp(0.85, 1.0),
-                    height: 10,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(50),
-                      color: Colors.black.withAlpha(80),
-                    ),
+                SizedBox(
+                  width: s,
+                  height: s,
+                  child: Stack(
+                    alignment: Alignment.bottomCenter,
+                    children: [
+                      // ── Ground shadow ellipse — pulses with the bob ──────────
+                      Positioned(
+                        // Offset the shadow up by the PNG's transparent footer
+                        // so it always sits under the visible feet, not the SizedBox edge.
+                        bottom:
+                            2 +
+                            FighterSprite(
+                              skin: user.characterSkin,
+                              size: s,
+                            ).feetPaddingPixels(s),
+                        child: Container(
+                          // shadow shrinks slightly when fighter bobs up
+                          width:
+                              s *
+                              0.6 *
+                              (1.0 - idleBobY * 0.015).clamp(0.85, 1.0),
+                          height: 10,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(50),
+                            color: Colors.black.withAlpha(80),
+                          ),
+                        ),
+                      ),
+                      // ── Sprite ──────────────────────────────────────────────
+                      Opacity(
+                        opacity: isKO ? 0.35 : 1.0,
+                        child: Transform.scale(
+                          scaleX: widget.facingRight ? 1.0 : -1.0,
+                          child: FighterSprite(
+                            skin: user.characterSkin,
+                            size: s,
+                            isKO: isKO,
+                            pose: _isHitPose
+                                ? FighterPose.hit
+                                : FighterPose.idle,
+                          ),
+                        ),
+                      ),
+
+                      // ── Red flash overlay ────────────────────────────────────
+                      if (_showHitEffect)
+                        IgnorePointer(
+                          child: Container(
+                            width: s,
+                            height: s,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Color.fromARGB(tintAlpha, 255, 50, 50),
+                            ),
+                          ),
+                        ),
+
+                      // ── Floating explosion — shown on hit ───────────────────
+                      if (_showHitEffect)
+                        Positioned(
+                          top: 0,
+                          child: Animate(
+                            effects: const [
+                              MoveEffect(
+                                begin: Offset(0, 0),
+                                end: Offset(0, -36),
+                                duration: Duration(milliseconds: 600),
+                                curve: Curves.easeOut,
+                              ),
+                              FadeEffect(
+                                begin: 1,
+                                end: 0,
+                                delay: Duration(milliseconds: 300),
+                                duration: Duration(milliseconds: 300),
+                              ),
+                            ],
+                            child: const _ExplosionBurst(size: 28),
+                          ),
+                        ),
+
+                      // ── K.O. badge ───────────────────────────────────────────
+                      if (isKO)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.redAccent,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text(
+                            'K.O.',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              letterSpacing: 2,
+                            ),
+                          ),
+                        ),
+
+                      // ── Attack indicator (tap to attack) ─────────────────────
+                      if (widget.isAttackable && !isKO && !_showHitEffect)
+                        Positioned(
+                          top: 4,
+                          right: 0,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE53935).withAlpha(200),
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFFE53935).withAlpha(120),
+                                  blurRadius: 6,
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.bolt,
+                              color: Colors.white,
+                              size: 14,
+                            ),
+                          ),
+                        ),
+
+                      // ── Active shield badge ──────────────────────────────────
+                      if (!isKO && _hasActiveShield(user))
+                        Positioned(
+                          top: 4,
+                          left: 0,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1565C0).withAlpha(220),
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF42A5F5).withAlpha(160),
+                                  blurRadius: 8,
+                                ),
+                              ],
+                            ),
+                            child: const Text(
+                              '🛡️',
+                              style: TextStyle(fontSize: 11),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
-                // ── Sprite ──────────────────────────────────────────────
-                Opacity(
-                  opacity: isKO ? 0.35 : 1.0,
-                  child: Transform.scale(
-                    scaleX: widget.facingRight ? 1.0 : -1.0,
-                    child: FighterSprite(
-                      skin: user.characterSkin,
-                      size: s,
-                      isKO: isKO,
-                      pose: _isHitPose ? FighterPose.hit : FighterPose.idle,
-                    ),
-                  ),
+                // ── HP bar below sprite ──────────────────────────────────
+                _InlineHpBar(
+                  user: user,
+                  leagueId: widget.leagueId,
+                  maxHp: widget.maxHp,
+                  width: s,
+                  isCurrentUser: widget.isCurrentUser,
                 ),
-
-                // ── Red flash overlay ────────────────────────────────────
-                if (_showHitEffect)
-                  IgnorePointer(
-                    child: Container(
-                      width: s,
-                      height: s,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Color.fromARGB(tintAlpha, 255, 50, 50),
-                      ),
-                    ),
-                  ),
-
-                // ── Floating explosion — shown on hit ───────────────────
-                if (_showHitEffect)
-                  Positioned(
-                    top: 0,
-                    child: Animate(
-                      effects: const [
-                        MoveEffect(
-                          begin: Offset(0, 0),
-                          end: Offset(0, -36),
-                          duration: Duration(milliseconds: 600),
-                          curve: Curves.easeOut,
-                        ),
-                        FadeEffect(
-                          begin: 1,
-                          end: 0,
-                          delay: Duration(milliseconds: 300),
-                          duration: Duration(milliseconds: 300),
-                        ),
-                      ],
-                      child: const _ExplosionBurst(size: 28),
-                    ),
-                  ),
-
-                // ── K.O. badge ───────────────────────────────────────────
-                if (isKO)
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: Colors.redAccent,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Text('K.O.',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
-                            letterSpacing: 2)),
-                  ),
-
-                // ── Attack indicator (tap to attack) ─────────────────────
-                if (widget.isAttackable && !isKO && !_showHitEffect)
-                  Positioned(
-                    top: 4,
-                    right: 0,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE53935).withAlpha(200),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFFE53935).withAlpha(120),
-                            blurRadius: 6,
-                          ),
-                        ],
-                      ),
-                      child: const Icon(Icons.bolt,
-                          color: Colors.white, size: 14),
-                    ),
-                  ),
-
-                // ── Active shield badge ──────────────────────────────────
-                if (!isKO && _hasActiveShield(user))
-                  Positioned(
-                    top: 4,
-                    left: 0,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1565C0).withAlpha(220),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF42A5F5).withAlpha(160),
-                            blurRadius: 8,
-                          ),
-                        ],
-                      ),
-                      child: const Text('🛡️', style: TextStyle(fontSize: 11)),
-                    ),
-                  ),
               ],
-            ),
-          ),
-              // ── HP bar below sprite ──────────────────────────────────
-              _InlineHpBar(
-                user: user,
-                leagueId: widget.leagueId,
-                maxHp: widget.maxHp,
-                width: s,
-                isCurrentUser: widget.isCurrentUser,
-              ),
-            ],
-          ),       // Column
-          ),       // Transform.rotate
-        );         // Transform.translate
+            ), // Column
+          ), // Transform.rotate
+        ); // Transform.translate
       },
     );
   }
@@ -1577,8 +1761,8 @@ class _BenchRow extends StatelessWidget {
     final hpColor = hpRatio > 0.6
         ? const Color(0xFF4CAF50)
         : hpRatio > 0.3
-            ? const Color(0xFFFFC107)
-            : const Color(0xFFE53935);
+        ? const Color(0xFFFFC107)
+        : const Color(0xFFE53935);
     final isKO = hp <= 0;
     final canAttack = onTap != null && !isCurrentUser && !isKO;
 
@@ -1642,25 +1826,31 @@ class _BenchRow extends StatelessWidget {
                             Container(
                               margin: const EdgeInsets.only(right: 4),
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 4, vertical: 1),
+                                horizontal: 4,
+                                vertical: 1,
+                              ),
                               decoration: BoxDecoration(
                                 color: const Color(0xFF6C3CE1).withAlpha(120),
                                 borderRadius: BorderRadius.circular(3),
                               ),
-                              child: const Text('YOU',
-                                  style: TextStyle(
-                                      color: Color(0xFFB39DDB),
-                                      fontSize: 8,
-                                      fontWeight: FontWeight.bold,
-                                      letterSpacing: 1)),
+                              child: const Text(
+                                'YOU',
+                                style: TextStyle(
+                                  color: Color(0xFFB39DDB),
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1,
+                                ),
+                              ),
                             ),
                           Flexible(
                             child: Text(
                               user.name.isNotEmpty ? user.name : user.email,
                               style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
                               overflow: TextOverflow.ellipsis,
                               maxLines: 1,
                             ),
@@ -1689,36 +1879,48 @@ class _BenchRow extends StatelessWidget {
                     Text(
                       '$hp/$maxHp',
                       style: TextStyle(
-                          fontSize: 10,
-                          color: hpColor,
-                          fontWeight: FontWeight.bold),
+                        fontSize: 10,
+                        color: hpColor,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       '🪙${user.coins}',
                       style: const TextStyle(
-                          fontSize: 10, color: Colors.white38),
+                        fontSize: 10,
+                        color: Colors.white38,
+                      ),
                     ),
                     if (canAttack) ...[
                       const SizedBox(height: 4),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 7, vertical: 3),
+                          horizontal: 7,
+                          vertical: 3,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFFE53935).withAlpha(180),
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: const Row(
+                        child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.bolt, size: 11, color: Colors.white),
-                            SizedBox(width: 3),
-                            Text('ATTACK',
-                                style: TextStyle(
-                                    fontSize: 9,
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 0.5)),
+                            const Icon(
+                              Icons.bolt,
+                              size: 11,
+                              color: Colors.white,
+                            ),
+                            const SizedBox(width: 3),
+                            Text(
+                              context.tr('attackBadge'),
+                              style: const TextStyle(
+                                fontSize: 9,
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -1760,8 +1962,8 @@ class _InlineHpBar extends StatelessWidget {
     final hpColor = hpRatio > 0.6
         ? const Color(0xFF4CAF50)
         : hpRatio > 0.3
-            ? const Color(0xFFFFC107)
-            : const Color(0xFFE53935);
+        ? const Color(0xFFFFC107)
+        : const Color(0xFFE53935);
     final name = user.name.isNotEmpty ? user.name : user.email;
 
     return Container(
@@ -1841,18 +2043,26 @@ class _PlayersTab extends ConsumerWidget {
     return membersAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(
-          child: Text(e.toString(),
-              style: const TextStyle(color: Colors.white54))),
+        child: Text(
+          e.toString(),
+          style: const TextStyle(color: Colors.white54),
+        ),
+      ),
       data: (members) {
         if (members.isEmpty) {
-          return const Center(
-              child: Text('No fighters yet.',
-                  style: TextStyle(color: Colors.white54)));
+          return Center(
+            child: Text(
+              context.tr('noFightersYet'),
+              style: const TextStyle(color: Colors.white54),
+            ),
+          );
         }
-        final sorted = [...members]..sort((a, b) {
+        final sorted = [...members]
+          ..sort((a, b) {
             if (a.id == currentUid) return -1;
             if (b.id == currentUid) return 1;
-            return b.currentHp(leagueId, maxHp: maxHp)
+            return b
+                .currentHp(leagueId, maxHp: maxHp)
                 .compareTo(a.currentHp(leagueId, maxHp: maxHp));
           });
 
@@ -1895,8 +2105,8 @@ class _PlayerCard extends StatelessWidget {
     final hpColor = hpRatio > 0.6
         ? const Color(0xFF4CAF50)
         : hpRatio > 0.3
-            ? const Color(0xFFFFC107)
-            : const Color(0xFFE53935);
+        ? const Color(0xFFFFC107)
+        : const Color(0xFFE53935);
     final isKO = hp <= 0;
     final name = user.name.isNotEmpty ? user.name : user.email;
 
@@ -1905,7 +2115,10 @@ class _PlayerCard extends StatelessWidget {
     final attacksUsed = (user.lastAttackDate == todayStr)
         ? user.todayAttacks
         : 0;
-    final attacksLeft = (kMaxDailyAttacks - attacksUsed).clamp(0, kMaxDailyAttacks);
+    final attacksLeft = (kMaxDailyAttacks - attacksUsed).clamp(
+      0,
+      kMaxDailyAttacks,
+    );
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -1959,41 +2172,52 @@ class _PlayerCard extends StatelessWidget {
                       Container(
                         margin: const EdgeInsets.only(right: 5),
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 5, vertical: 1),
+                          horizontal: 5,
+                          vertical: 1,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFF6C3CE1).withAlpha(120),
                           borderRadius: BorderRadius.circular(4),
                         ),
-                        child: const Text('YOU',
-                            style: TextStyle(
-                                color: Color(0xFFB39DDB),
-                                fontSize: 8,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 1)),
+                        child: const Text(
+                          'YOU',
+                          style: TextStyle(
+                            color: Color(0xFFB39DDB),
+                            fontSize: 8,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1,
+                          ),
+                        ),
                       ),
                     if (isKO)
                       Container(
                         margin: const EdgeInsets.only(right: 5),
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 5, vertical: 1),
+                          horizontal: 5,
+                          vertical: 1,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.redAccent.withAlpha(60),
                           borderRadius: BorderRadius.circular(4),
                         ),
-                        child: const Text('K.O.',
-                            style: TextStyle(
-                                color: Color(0xFFEF9A9A),
-                                fontSize: 8,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 1)),
+                        child: const Text(
+                          'K.O.',
+                          style: TextStyle(
+                            color: Color(0xFFEF9A9A),
+                            fontSize: 8,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1,
+                          ),
+                        ),
                       ),
                     Flexible(
                       child: Text(
                         name,
                         style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -2010,8 +2234,7 @@ class _PlayerCard extends StatelessWidget {
                           value: hpRatio,
                           minHeight: 7,
                           backgroundColor: Colors.white10,
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(hpColor),
+                          valueColor: AlwaysStoppedAnimation<Color>(hpColor),
                         ),
                       ),
                     ),
@@ -2019,9 +2242,10 @@ class _PlayerCard extends StatelessWidget {
                     Text(
                       '$hp/$maxHp',
                       style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: hpColor),
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: hpColor,
+                      ),
                     ),
                   ],
                 ),
@@ -2029,8 +2253,7 @@ class _PlayerCard extends StatelessWidget {
                 // Attacks + coins row
                 Row(
                   children: [
-                    const Icon(Icons.bolt,
-                        size: 11, color: Color(0xFFFFC107)),
+                    const Icon(Icons.bolt, size: 11, color: Color(0xFFFFC107)),
                     const SizedBox(width: 3),
                     Text(
                       '$attacksLeft attacks left',
@@ -2042,12 +2265,13 @@ class _PlayerCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 10),
-                    const Text('🪙',
-                        style: TextStyle(fontSize: 10)),
+                    const Text('🪙', style: TextStyle(fontSize: 10)),
                     Text(
                       '${user.coins}',
                       style: const TextStyle(
-                          fontSize: 10, color: Colors.white54),
+                        fontSize: 10,
+                        color: Colors.white54,
+                      ),
                     ),
                   ],
                 ),
@@ -2082,18 +2306,23 @@ class _MyStatusBanner extends ConsumerWidget {
     final hpColor = hpRatio > 0.6
         ? const Color(0xFF4CAF50)
         : hpRatio > 0.3
-            ? const Color(0xFFFFC107)
-            : const Color(0xFFE53935);
+        ? const Color(0xFFFFC107)
+        : const Color(0xFFE53935);
     final isKO = hp <= 0;
 
     final todayStr = DateTime.now().toIso8601String().substring(0, 10);
-    final attacksUsed = (user.lastAttackDate == todayStr) ? user.todayAttacks : 0;
-    final attacksLeft = (kMaxDailyAttacks - attacksUsed).clamp(0, kMaxDailyAttacks);
+    final attacksUsed = (user.lastAttackDate == todayStr)
+        ? user.todayAttacks
+        : 0;
+    final attacksLeft = (kMaxDailyAttacks - attacksUsed).clamp(
+      0,
+      kMaxDailyAttacks,
+    );
     final attackColor = attacksLeft == 0
         ? Colors.white24
         : attacksLeft <= 2
-            ? const Color(0xFFFFC107)
-            : const Color(0xFF69F0AE);
+        ? const Color(0xFFFFC107)
+        : const Color(0xFF69F0AE);
 
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 10, 12, 0),
@@ -2130,38 +2359,53 @@ class _MyStatusBanner extends ConsumerWidget {
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 5,
+                        vertical: 1,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFF6C3CE1).withAlpha(120),
                         borderRadius: BorderRadius.circular(4),
                       ),
-                      child: const Text('YOU',
-                          style: TextStyle(
-                              color: Color(0xFFB39DDB),
-                              fontSize: 8,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1)),
+                      child: const Text(
+                        'YOU',
+                        style: TextStyle(
+                          color: Color(0xFFB39DDB),
+                          fontSize: 8,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1,
+                        ),
+                      ),
                     ),
                     const SizedBox(width: 6),
                     if (isKO)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 5,
+                          vertical: 1,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.redAccent.withAlpha(60),
                           borderRadius: BorderRadius.circular(4),
                         ),
-                        child: const Text('K.O.',
-                            style: TextStyle(
-                                color: Color(0xFFEF9A9A),
-                                fontSize: 8,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 1)),
+                        child: const Text(
+                          'K.O.',
+                          style: TextStyle(
+                            color: Color(0xFFEF9A9A),
+                            fontSize: 8,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1,
+                          ),
+                        ),
                       ),
                     Flexible(
                       child: Text(
                         user.name.isNotEmpty ? user.name : user.email,
                         style: const TextStyle(
-                            fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -2182,9 +2426,14 @@ class _MyStatusBanner extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(width: 6),
-                    Text('$hp/$maxHp',
-                        style: TextStyle(
-                            fontSize: 10, fontWeight: FontWeight.bold, color: hpColor)),
+                    Text(
+                      '$hp/$maxHp',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: hpColor,
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -2207,9 +2456,13 @@ class _MyStatusBanner extends ConsumerWidget {
                     margin: const EdgeInsets.only(left: 3),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: filled ? attackColor.withAlpha(180) : Colors.white12,
+                      color: filled
+                          ? attackColor.withAlpha(180)
+                          : Colors.white12,
                       border: Border.all(
-                        color: filled ? attackColor.withAlpha(200) : Colors.white24,
+                        color: filled
+                            ? attackColor.withAlpha(200)
+                            : Colors.white24,
                         width: 1,
                       ),
                     ),
@@ -2220,13 +2473,16 @@ class _MyStatusBanner extends ConsumerWidget {
               Text(
                 '$attacksLeft left',
                 style: TextStyle(
-                    fontSize: 10,
-                    color: attackColor,
-                    fontWeight: FontWeight.bold),
+                  fontSize: 10,
+                  color: attackColor,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 3),
-              Text('🪙${user.coins}',
-                  style: const TextStyle(fontSize: 10, color: Colors.white38)),
+              Text(
+                '🪙${user.coins}',
+                style: const TextStyle(fontSize: 10, color: Colors.white38),
+              ),
               const SizedBox(height: 4),
               // Shield button / indicator
               _ShieldChip(user: user, leagueId: leagueId, ref: ref),
@@ -2246,7 +2502,11 @@ class _ShieldChip extends StatelessWidget {
   final UserModel user;
   final String leagueId;
   final WidgetRef ref;
-  const _ShieldChip({required this.user, required this.leagueId, required this.ref});
+  const _ShieldChip({
+    required this.user,
+    required this.leagueId,
+    required this.ref,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -2273,7 +2533,10 @@ class _ShieldChip extends StatelessWidget {
             Text(
               h > 0 ? '${h}h ${m}m' : '${m}m',
               style: const TextStyle(
-                  fontSize: 9, color: Color(0xFF90CAF9), fontWeight: FontWeight.bold),
+                fontSize: 9,
+                color: Color(0xFF90CAF9),
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ],
         ),
@@ -2290,13 +2553,15 @@ class _ShieldChip extends StatelessWidget {
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: Colors.white24),
         ),
-        child: const Row(
+        child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('🛡️', style: TextStyle(fontSize: 10)),
-            SizedBox(width: 3),
-            Text('Buy shield',
-                style: TextStyle(fontSize: 9, color: Colors.white38)),
+            const Text('🛡️', style: TextStyle(fontSize: 10)),
+            const SizedBox(width: 3),
+            Text(
+              context.tr('buyShieldShort'),
+              style: const TextStyle(fontSize: 9, color: Colors.white38),
+            ),
           ],
         ),
       ),
@@ -2315,12 +2580,17 @@ Future<void> _showBuyShieldDialog(
     builder: (ctx) => AlertDialog(
       backgroundColor: const Color(0xFF1A1A2E),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: const Row(
+      title: Row(
         children: [
-          Text('🛡️', style: TextStyle(fontSize: 22)),
-          SizedBox(width: 8),
-          Text('Buy a Shield',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          const Text('🛡️', style: TextStyle(fontSize: 22)),
+          const SizedBox(width: 8),
+          Text(
+            context.tr('buyShieldTitle'),
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ],
       ),
       content: Column(
@@ -2328,7 +2598,7 @@ Future<void> _showBuyShieldDialog(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Protect yourself from attacks for a limited time.\nYou have 🪙${user.coins} coins.',
+            context.trArgs('buyShieldDesc', {'coins': '${user.coins}'}),
             style: const TextStyle(color: Colors.white54, fontSize: 13),
           ),
           const SizedBox(height: 16),
@@ -2353,18 +2623,26 @@ Future<void> _showBuyShieldDialog(
                         if (!context.mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text(ok
-                                ? '🛡️ Shield active for $label!'
-                                : 'Not enough coins.'),
-                            backgroundColor:
-                                ok ? const Color(0xFF1565C0) : Colors.redAccent,
+                            content: Text(
+                              ok
+                                  ? context.trArgs('shieldActiveFor', {
+                                      'duration': label,
+                                    })
+                                  : context.tr('notEnoughCoins'),
+                            ),
+                            backgroundColor: ok
+                                ? const Color(0xFF1565C0)
+                                : Colors.redAccent,
                             duration: const Duration(seconds: 2),
                           ),
                         );
                       }
                     : null,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
                     color: canAfford
                         ? const Color(0xFF1565C0).withAlpha(30)
@@ -2378,25 +2656,29 @@ Future<void> _showBuyShieldDialog(
                   ),
                   child: Row(
                     children: [
-                      Text('🛡️ $label',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: canAfford ? Colors.white : Colors.white38,
-                          )),
+                      Text(
+                        '🛡️ $label',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: canAfford ? Colors.white : Colors.white38,
+                        ),
+                      ),
                       const Spacer(),
-                      Text('🪙$cost',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            color: canAfford
-                                ? const Color(0xFFFFB74D)
-                                : Colors.white24,
-                          )),
+                      Text(
+                        '🪙$cost',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: canAfford
+                              ? const Color(0xFFFFB74D)
+                              : Colors.white24,
+                        ),
+                      ),
                       if (!canAfford) ...[
                         const SizedBox(width: 6),
                         const Icon(Icons.lock, size: 13, color: Colors.white24),
-                      ]
+                      ],
                     ],
                   ),
                 ),
@@ -2408,7 +2690,10 @@ Future<void> _showBuyShieldDialog(
       actions: [
         TextButton(
           onPressed: () => Navigator.of(ctx).pop(),
-          child: const Text('Cancel', style: TextStyle(color: Colors.white38)),
+          child: Text(
+            context.tr('cancel'),
+            style: const TextStyle(color: Colors.white38),
+          ),
         ),
       ],
     ),
@@ -2441,23 +2726,25 @@ class _AttackHintBar extends StatelessWidget {
     Color iconColor;
 
     if (allKO) {
-      message = 'All opponents K.O.! Complete tasks to keep earning coins & XP.';
+      message = context.tr('allKoKeepEarning');
       icon = Icons.emoji_events;
       barColor = const Color(0xFFFFD700).withAlpha(18);
       iconColor = const Color(0xFFFFD700);
     } else if (attacksLeft == 0) {
-      message = 'No attacks left today — come back tomorrow!';
+      message = context.tr('noAttacksComeBack');
       icon = Icons.block;
       barColor = Colors.redAccent.withAlpha(15);
       iconColor = Colors.redAccent;
     } else {
-      message = 'Tap the opponent or press ATTACK, then pick a task to complete.';
+      message = context.tr('attackHintTap');
       icon = Icons.touch_app;
       barColor = const Color(0xFF6C3CE1).withAlpha(18);
       iconColor = const Color(0xFF9575CD);
     }
 
-    final buttonColor = allKO ? const Color(0xFFFFD700) : const Color(0xFFE53935);
+    final buttonColor = allKO
+        ? const Color(0xFFFFD700)
+        : const Color(0xFFE53935);
     final buttonTextColor = allKO ? const Color(0xFF1A1A2E) : Colors.white;
 
     return GestureDetector(
@@ -2491,15 +2778,15 @@ class _AttackHintBar extends StatelessWidget {
             if (onAttackTap != null) ...[
               const SizedBox(width: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: buttonColor.withAlpha(220),
                   borderRadius: BorderRadius.circular(8),
                   boxShadow: [
-                    BoxShadow(
-                      color: buttonColor.withAlpha(80),
-                      blurRadius: 6,
-                    ),
+                    BoxShadow(color: buttonColor.withAlpha(80), blurRadius: 6),
                   ],
                 ),
                 child: Row(
@@ -2512,12 +2799,15 @@ class _AttackHintBar extends StatelessWidget {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      allKO ? 'COMPLETE' : 'ATTACK',
+                      allKO
+                          ? context.tr('completeBadge')
+                          : context.tr('attackBadge'),
                       style: TextStyle(
-                          fontSize: 10,
-                          color: buttonTextColor,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.5),
+                        fontSize: 10,
+                        color: buttonTextColor,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
                     ),
                   ],
                 ),
@@ -2550,8 +2840,10 @@ class _LegendDot extends StatelessWidget {
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 5),
-        Text(label,
-            style: const TextStyle(color: Colors.white54, fontSize: 11)),
+        Text(
+          label,
+          style: const TextStyle(color: Colors.white54, fontSize: 11),
+        ),
       ],
     );
   }
@@ -2586,23 +2878,26 @@ Future<void> showArenaAttackDialog(
   final currentUser = results[1] as UserModel?;
 
   // Filter to only tasks assigned to current user
-  final allTasks = allLeagueTasks
-      .where((t) => t.assigneeId == currentUid)
-      .toList()
-    ..sort((a, b) {
-        // One-time tasks first, then recurring
-        if (a.repeat == TaskRepeat.none && b.repeat != TaskRepeat.none) return -1;
-        if (a.repeat != TaskRepeat.none && b.repeat == TaskRepeat.none) return 1;
-        return 0;
-      });
+  final allTasks =
+      allLeagueTasks.where((t) => t.assigneeId == currentUid).toList()
+        ..sort((a, b) {
+          // One-time tasks first, then recurring
+          if (a.repeat == TaskRepeat.none && b.repeat != TaskRepeat.none)
+            return -1;
+          if (a.repeat != TaskRepeat.none && b.repeat == TaskRepeat.none)
+            return 1;
+          return 0;
+        });
 
   // Check daily attack cap
   final todayStr = DateTime.now().toIso8601String().substring(0, 10);
   final attacksUsed = (currentUser?.lastAttackDate == todayStr)
       ? (currentUser?.todayAttacks ?? 0)
       : 0;
-  final attacksRemaining =
-      (kMaxDailyAttacks - attacksUsed).clamp(0, kMaxDailyAttacks);
+  final attacksRemaining = (kMaxDailyAttacks - attacksUsed).clamp(
+    0,
+    kMaxDailyAttacks,
+  );
 
   if (!context.mounted) return;
 
@@ -2611,7 +2906,8 @@ Future<void> showArenaAttackDialog(
     isScrollControlled: true,
     backgroundColor: const Color(0xFF1A1A2E),
     shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
     builder: (ctx) => _ArenaTaskPickerSheet(
       target: target,
       currentUser: currentUser,
@@ -2633,7 +2929,8 @@ Future<void> showArenaAttackDialog(
         if (!context.mounted) return;
         final maxHp = maxHpForType(league.competitionType);
         final attackerIsKO =
-            currentUser != null && currentUser.currentHp(leagueId, maxHp: maxHp) <= 0;
+            currentUser != null &&
+            currentUser.currentHp(leagueId, maxHp: maxHp) <= 0;
         await showDialog(
           context: context,
           barrierDismissible: false,
@@ -2644,7 +2941,9 @@ Future<void> showArenaAttackDialog(
             attackerIsKO: attackerIsKO,
             noAttacksLeft: attacksRemaining == 0,
             onComplete: () async {
-              final event = await ref.read(taskServiceProvider).completeTask(
+              final event = await ref
+                  .read(taskServiceProvider)
+                  .completeTask(
                     task: task,
                     doerId: currentUid,
                     targetId: target?.id,
@@ -2679,7 +2978,8 @@ Future<void> showArenaAttackDialogWithTask(
   // All league members INCLUDING the current user, so the doer can be changed
   // (default: the current user).
   final allMembers = List<UserModel>.from(
-      ref.read(leagueMembersProvider(leagueId)).valueOrNull ?? const []);
+    ref.read(leagueMembersProvider(leagueId)).valueOrNull ?? const [],
+  );
   if (currentUser != null && !allMembers.any((m) => m.id == currentUid)) {
     allMembers.insert(0, currentUser);
   }
@@ -2691,7 +2991,8 @@ Future<void> showArenaAttackDialogWithTask(
     isScrollControlled: true,
     backgroundColor: const Color(0xFF1A1A2E),
     shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
     builder: (ctx) => _OpponentPickerSheet(
       task: task,
       allMembers: allMembers,
@@ -2705,11 +3006,14 @@ Future<void> showArenaAttackDialogWithTask(
                 context: ctx,
                 builder: (dctx) => AlertDialog(
                   backgroundColor: const Color(0xFF1A1A2E),
-                  title: Text(context.tr('skipOccurrenceTitle'),
-                      style: const TextStyle(color: Colors.white)),
+                  title: Text(
+                    context.tr('skipOccurrenceTitle'),
+                    style: const TextStyle(color: Colors.white),
+                  ),
                   content: Text(
-                    context.trArgs(
-                        'skipOccurrenceMessage', {'title': task.title}),
+                    context.trArgs('skipOccurrenceMessage', {
+                      'title': task.title,
+                    }),
                     style: const TextStyle(color: Colors.white70),
                   ),
                   actions: [
@@ -2720,7 +3024,8 @@ Future<void> showArenaAttackDialogWithTask(
                     TextButton(
                       onPressed: () => Navigator.pop(dctx, true),
                       style: TextButton.styleFrom(
-                          foregroundColor: const Color(0xFFEF9A9A)),
+                        foregroundColor: const Color(0xFFEF9A9A),
+                      ),
                       child: Text(context.tr('skipConfirm')),
                     ),
                   ],
@@ -2746,11 +3051,11 @@ Future<void> showArenaAttackDialogWithTask(
         Navigator.of(ctx).pop();
         if (!context.mounted) return;
         final resolvedMaxHp = maxHpForType(league.competitionType);
-        final attackerIsKO = doer.currentHp(leagueId, maxHp: resolvedMaxHp) <= 0;
+        final attackerIsKO =
+            doer.currentHp(leagueId, maxHp: resolvedMaxHp) <= 0;
         final todayStr = DateTime.now().toIso8601String().substring(0, 10);
         final used = doer.lastAttackDate == todayStr ? doer.todayAttacks : 0;
-        final remaining =
-            (kMaxDailyAttacks - used).clamp(0, kMaxDailyAttacks);
+        final remaining = (kMaxDailyAttacks - used).clamp(0, kMaxDailyAttacks);
         await showDialog(
           context: context,
           barrierDismissible: false,
@@ -2761,7 +3066,9 @@ Future<void> showArenaAttackDialogWithTask(
             attackerIsKO: attackerIsKO,
             noAttacksLeft: remaining == 0,
             onComplete: () async {
-              final event = await ref.read(taskServiceProvider).completeTask(
+              final event = await ref
+                  .read(taskServiceProvider)
+                  .completeTask(
                     task: task,
                     doerId: doer.id,
                     targetId: target?.id,
@@ -2827,8 +3134,9 @@ class _OpponentPickerSheetState extends ConsumerState<_OpponentPickerSheet> {
     if (doer.id != widget.currentUserId) return false;
     if (!ref.read(adsServiceProvider).canOfferReward) return false;
     final todayStr = DateTime.now().toIso8601String().substring(0, 10);
-    final storedClaims =
-        doer.lastBonusAttackDate == todayStr ? doer.bonusAttacksToday : 0;
+    final storedClaims = doer.lastBonusAttackDate == todayStr
+        ? doer.bonusAttacksToday
+        : 0;
     return storedClaims + _adRewardsClaimed < kMaxAdAttacks;
   }
 
@@ -2845,8 +3153,9 @@ class _OpponentPickerSheetState extends ConsumerState<_OpponentPickerSheet> {
         );
         return;
       }
-      final coins =
-          await ref.read(userRepositoryProvider).grantAdAttackCoin(doer.id);
+      final coins = await ref
+          .read(userRepositoryProvider)
+          .grantAdAttackCoin(doer.id);
       if (!mounted) return;
       if (coins > 0) {
         setState(() => _adRewardsClaimed += 1);
@@ -2872,8 +3181,9 @@ class _OpponentPickerSheetState extends ConsumerState<_OpponentPickerSheet> {
     final members = widget.allMembers.where((m) => m.id != doer.id).toList();
     final attacksRemaining = _attacksRemainingFor(doer);
 
-    final liveOpponents =
-        members.where((m) => m.currentHp(leagueId, maxHp: maxHp) > 0).toList();
+    final liveOpponents = members
+        .where((m) => m.currentHp(leagueId, maxHp: maxHp) > 0)
+        .toList();
     final canAttack = attacksRemaining > 0 && liveOpponents.isNotEmpty;
 
     return DraggableScrollableSheet(
@@ -2888,11 +3198,13 @@ class _OpponentPickerSheetState extends ConsumerState<_OpponentPickerSheet> {
           // Handle
           Center(
             child: Container(
-              width: 40, height: 4,
+              width: 40,
+              height: 4,
               margin: const EdgeInsets.only(bottom: 16),
               decoration: BoxDecoration(
-                  color: Colors.white24,
-                  borderRadius: BorderRadius.circular(2)),
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
           ),
 
@@ -2913,9 +3225,10 @@ class _OpponentPickerSheetState extends ConsumerState<_OpponentPickerSheet> {
                   child: Text(
                     task.title,
                     style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600),
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],
@@ -2927,9 +3240,10 @@ class _OpponentPickerSheetState extends ConsumerState<_OpponentPickerSheet> {
             Text(
               context.tr('whoDidIt'),
               style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold),
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 10),
             SizedBox(
@@ -2956,8 +3270,9 @@ class _OpponentPickerSheetState extends ConsumerState<_OpponentPickerSheet> {
           // grants coins/XP to that person and does not consume daily attacks.
           if (doer.id != widget.currentUserId) ...[
             _OpponentRow(
-              name: context.trArgs('creditsOnlyFor',
-                  {'name': doer.name.isNotEmpty ? doer.name : doer.email}),
+              name: context.trArgs('creditsOnlyFor', {
+                'name': doer.name.isNotEmpty ? doer.name : doer.email,
+              }),
               subtitle: context.tr('completeNoDamage'),
               icon: Icons.emoji_events_outlined,
               iconColor: const Color(0xFFFFD700),
@@ -2971,17 +3286,18 @@ class _OpponentPickerSheetState extends ConsumerState<_OpponentPickerSheet> {
             Text(
               context.tr('whoToAttack'),
               style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold),
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 4),
             Text(
               canAttack
                   ? context.tr('selectOpponentOrComplete')
                   : attacksRemaining == 0
-                      ? context.tr('noAttacksLeftEarnCoins')
-                      : context.tr('allKoComplete'),
+                  ? context.tr('noAttacksLeftEarnCoins')
+                  : context.tr('allKoComplete'),
               style: const TextStyle(color: Colors.white54, fontSize: 12),
             ),
             const SizedBox(height: 16),
@@ -3015,7 +3331,10 @@ class _OpponentPickerSheetState extends ConsumerState<_OpponentPickerSheet> {
                   children: [
                     Text(
                       context.tr('attackCapUnlockTomorrow'),
-                      style: const TextStyle(color: Colors.white38, fontSize: 12),
+                      style: const TextStyle(
+                        color: Colors.white38,
+                        fontSize: 12,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                     if (_canWatchAdForCoin(doer)) ...[
@@ -3030,17 +3349,18 @@ class _OpponentPickerSheetState extends ConsumerState<_OpponentPickerSheet> {
                               ? const SizedBox(
                                   width: 16,
                                   height: 16,
-                                  child:
-                                      CircularProgressIndicator(strokeWidth: 2),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
                                 )
                               : const Icon(Icons.play_circle_outline, size: 18),
                           label: Text(context.tr('watchAdToAttack')),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: const Color(0xFFFFD54F),
                             side: BorderSide(
-                                color: const Color(0xFFFFC107).withAlpha(120)),
-                            padding:
-                                const EdgeInsets.symmetric(vertical: 12),
+                              color: const Color(0xFFFFC107).withAlpha(120),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
                           ),
                         ),
                       ),
@@ -3053,8 +3373,11 @@ class _OpponentPickerSheetState extends ConsumerState<_OpponentPickerSheet> {
               const SizedBox(height: 8),
               ...liveOpponents.map((m) {
                 final shieldExpiry = m.shieldByLeague[leagueId];
-                final hasShield = shieldExpiry != null &&
-                    DateTime.now().toUtc().isBefore(DateTime.parse(shieldExpiry));
+                final hasShield =
+                    shieldExpiry != null &&
+                    DateTime.now().toUtc().isBefore(
+                      DateTime.parse(shieldExpiry),
+                    );
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: _OpponentRow(
@@ -3108,8 +3431,9 @@ class _DoerChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label =
-        isMe ? context.tr('youTag') : (member.name.isNotEmpty ? member.name : member.email);
+    final label = isMe
+        ? context.tr('youTag')
+        : (member.name.isNotEmpty ? member.name : member.email);
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -3179,10 +3503,10 @@ class _OpponentRow extends StatelessWidget {
     final hpColor = hpRatio == null
         ? Colors.white38
         : hpRatio > 0.6
-            ? const Color(0xFF4CAF50)
-            : hpRatio > 0.3
-                ? const Color(0xFFFFC107)
-                : const Color(0xFFE53935);
+        ? const Color(0xFF4CAF50)
+        : hpRatio > 0.3
+        ? const Color(0xFFFFC107)
+        : const Color(0xFFE53935);
 
     return GestureDetector(
       onTap: onTap,
@@ -3199,7 +3523,8 @@ class _OpponentRow extends StatelessWidget {
               FighterSprite(skin: member!.characterSkin, size: 40)
             else
               Container(
-                width: 40, height: 40,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
                   color: (iconColor ?? Colors.white).withAlpha(20),
                   shape: BoxShape.circle,
@@ -3211,39 +3536,52 @@ class _OpponentRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(name,
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600)),
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   if (subtitle != null) ...[
                     const SizedBox(height: 2),
-                    Text(subtitle!,
-                        style: const TextStyle(
-                            color: Colors.white38, fontSize: 11)),
+                    Text(
+                      subtitle!,
+                      style: const TextStyle(
+                        color: Colors.white38,
+                        fontSize: 11,
+                      ),
+                    ),
                   ],
                   if (hpRatio != null) ...[
                     const SizedBox(height: 5),
-                    Row(children: [
-                      Expanded(
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(3),
-                          child: LinearProgressIndicator(
-                            value: hpRatio,
-                            minHeight: 5,
-                            backgroundColor: Colors.white10,
-                            valueColor:
-                                AlwaysStoppedAnimation<Color>(hpColor),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(3),
+                            child: LinearProgressIndicator(
+                              value: hpRatio,
+                              minHeight: 5,
+                              backgroundColor: Colors.white10,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                hpColor,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text('$hp/$maxHp',
+                        const SizedBox(width: 6),
+                        Text(
+                          '$hp/$maxHp',
                           style: TextStyle(
-                              fontSize: 9,
-                              color: hpColor,
-                              fontWeight: FontWeight.bold)),
-                    ]),
+                            fontSize: 9,
+                            color: hpColor,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ],
               ),
@@ -3297,8 +3635,9 @@ class _ArenaTaskPickerSheetState extends ConsumerState<_ArenaTaskPickerSheet> {
     if (user == null) return false;
     if (!ref.read(adsServiceProvider).canOfferReward) return false;
     final todayStr = DateTime.now().toIso8601String().substring(0, 10);
-    final storedClaims =
-        user.lastBonusAttackDate == todayStr ? user.bonusAttacksToday : 0;
+    final storedClaims = user.lastBonusAttackDate == todayStr
+        ? user.bonusAttacksToday
+        : 0;
     return storedClaims + _adRewardsClaimed < kMaxAdAttacks;
   }
 
@@ -3317,8 +3656,9 @@ class _ArenaTaskPickerSheetState extends ConsumerState<_ArenaTaskPickerSheet> {
         );
         return;
       }
-      final coins =
-          await ref.read(userRepositoryProvider).grantAdAttackCoin(user.id);
+      final coins = await ref
+          .read(userRepositoryProvider)
+          .grantAdAttackCoin(user.id);
       if (!mounted) return;
       if (coins > 0) {
         setState(() => _adRewardsClaimed += 1);
@@ -3342,15 +3682,16 @@ class _ArenaTaskPickerSheetState extends ConsumerState<_ArenaTaskPickerSheet> {
     final onCompleteNoTarget = widget.onCompleteNoTarget;
     // target == null means all opponents are KO — completing for XP only
     final noTarget = target == null;
-    final targetName =
-        noTarget ? '' : (target.name.isNotEmpty ? target.name : target.email);
+    final targetName = noTarget
+        ? ''
+        : (target.name.isNotEmpty ? target.name : target.email);
     final hp = noTarget ? 0 : target.currentHp(leagueId, maxHp: maxHp);
     final hpRatio = noTarget || maxHp == 0 ? 0.0 : (hp / maxHp).clamp(0.0, 1.0);
     final hpColor = hpRatio > 0.6
         ? const Color(0xFF4CAF50)
         : hpRatio > 0.3
-            ? const Color(0xFFFFC107)
-            : const Color(0xFFE53935);
+        ? const Color(0xFFFFC107)
+        : const Color(0xFFE53935);
 
     return DraggableScrollableSheet(
       initialChildSize: 0.75,
@@ -3381,28 +3722,38 @@ class _ArenaTaskPickerSheetState extends ConsumerState<_ArenaTaskPickerSheet> {
               decoration: BoxDecoration(
                 color: const Color(0xFFFFD700).withAlpha(18),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFFFD700).withAlpha(80)),
+                border: Border.all(
+                  color: const Color(0xFFFFD700).withAlpha(80),
+                ),
               ),
-              child: const Row(
+              child: Row(
                 children: [
-                  Icon(Icons.emoji_events, color: Color(0xFFFFD700), size: 28),
-                  SizedBox(width: 12),
+                  const Icon(
+                    Icons.emoji_events,
+                    color: Color(0xFFFFD700),
+                    size: 28,
+                  ),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'All opponents are K.O.!',
-                          style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              letterSpacing: 0.4),
+                          context.tr('allKoTitle'),
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            letterSpacing: 0.4,
+                          ),
                         ),
-                        SizedBox(height: 4),
+                        const SizedBox(height: 4),
                         Text(
-                          'Complete a task to earn coins & XP.\nNo damage will be dealt.',
-                          style: TextStyle(color: Colors.white54, fontSize: 12),
+                          context.tr('allKoSubtitle'),
+                          style: const TextStyle(
+                            color: Colors.white54,
+                            fontSize: 12,
+                          ),
                         ),
                       ],
                     ),
@@ -3418,7 +3769,9 @@ class _ArenaTaskPickerSheetState extends ConsumerState<_ArenaTaskPickerSheet> {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
-                        color: const Color(0xFFE53935).withAlpha(180), width: 2),
+                      color: const Color(0xFFE53935).withAlpha(180),
+                      width: 2,
+                    ),
                   ),
                   child: FighterSprite(skin: target.characterSkin, size: 52),
                 ),
@@ -3430,10 +3783,11 @@ class _ArenaTaskPickerSheetState extends ConsumerState<_ArenaTaskPickerSheet> {
                       Text(
                         context.trArgs('attackFighter', {'name': targetName}),
                         style: const TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                            letterSpacing: 0.5),
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          letterSpacing: 0.5,
+                        ),
                       ),
                       const SizedBox(height: 6),
                       ClipRRect(
@@ -3446,9 +3800,13 @@ class _ArenaTaskPickerSheetState extends ConsumerState<_ArenaTaskPickerSheet> {
                         ),
                       ),
                       const SizedBox(height: 3),
-                      Text('$hp/$maxHp HP  ·  🪙${target.coins}',
-                          style: const TextStyle(
-                              color: Colors.white38, fontSize: 11)),
+                      Text(
+                        '$hp/$maxHp HP  ·  🪙${target.coins}',
+                        style: const TextStyle(
+                          color: Colors.white38,
+                          fontSize: 11,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -3462,23 +3820,37 @@ class _ArenaTaskPickerSheetState extends ConsumerState<_ArenaTaskPickerSheet> {
             GestureDetector(
               onTap: onCompleteNoTarget,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white.withAlpha(8),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: Colors.white24),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
-                    Icon(Icons.check_circle_outline, color: Colors.white54, size: 18),
-                    SizedBox(width: 10),
+                    const Icon(
+                      Icons.check_circle_outline,
+                      color: Colors.white54,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        'Complete a task without attacking (earn coins only)',
-                        style: TextStyle(fontSize: 12, color: Colors.white54),
+                        context.tr('completeWithoutAttacking'),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.white54,
+                        ),
                       ),
                     ),
-                    Icon(Icons.chevron_right, color: Colors.white24, size: 18),
+                    const Icon(
+                      Icons.chevron_right,
+                      color: Colors.white24,
+                      size: 18,
+                    ),
                   ],
                 ),
               ),
@@ -3492,25 +3864,31 @@ class _ArenaTaskPickerSheetState extends ConsumerState<_ArenaTaskPickerSheet> {
           // Attacks cap warning or remaining indicator
           if (attacksRemaining == 0) ...[
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
                 color: const Color(0xFFE53935).withAlpha(25),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                    color: const Color(0xFFE53935).withAlpha(120)),
+                  color: const Color(0xFFE53935).withAlpha(120),
+                ),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.warning_amber_rounded,
-                      color: Color(0xFFEF9A9A), size: 18),
+                  const Icon(
+                    Icons.warning_amber_rounded,
+                    color: Color(0xFFEF9A9A),
+                    size: 18,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      context.trArgs('attackCapReached',
-                          {'max': '$kMaxDailyAttacks'}),
+                      context.trArgs('attackCapReached', {
+                        'max': '$kMaxDailyAttacks',
+                      }),
                       style: const TextStyle(
-                          color: Color(0xFFEF9A9A), fontSize: 12),
+                        color: Color(0xFFEF9A9A),
+                        fontSize: 12,
+                      ),
                     ),
                   ),
                 ],
@@ -3533,7 +3911,8 @@ class _ArenaTaskPickerSheetState extends ConsumerState<_ArenaTaskPickerSheet> {
                   style: OutlinedButton.styleFrom(
                     foregroundColor: const Color(0xFFFFD54F),
                     side: BorderSide(
-                        color: const Color(0xFFFFC107).withAlpha(120)),
+                      color: const Color(0xFFFFC107).withAlpha(120),
+                    ),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
                 ),
@@ -3541,25 +3920,28 @@ class _ArenaTaskPickerSheetState extends ConsumerState<_ArenaTaskPickerSheet> {
             ],
             const SizedBox(height: 16),
           ] else ...[
-            Row(children: [
-              Icon(
-                Icons.bolt,
-                size: 14,
-                color: attacksRemaining > 2
-                    ? const Color(0xFF4CAF50)
-                    : const Color(0xFFFFC107),
-              ),
-              const SizedBox(width: 4),
-              Text(
-                context.trArgs('attacksLeft', {'n': '$attacksRemaining'}),
-                style: TextStyle(
+            Row(
+              children: [
+                Icon(
+                  Icons.bolt,
+                  size: 14,
+                  color: attacksRemaining > 2
+                      ? const Color(0xFF4CAF50)
+                      : const Color(0xFFFFC107),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  context.trArgs('attacksLeft', {'n': '$attacksRemaining'}),
+                  style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: attacksRemaining > 2
                         ? const Color(0xFF4CAF50)
-                        : const Color(0xFFFFC107)),
-              ),
-            ]),
+                        : const Color(0xFFFFC107),
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 12),
           ],
 
@@ -3581,28 +3963,37 @@ class _ArenaTaskPickerSheetState extends ConsumerState<_ArenaTaskPickerSheet> {
               ),
               child: Column(
                 children: [
-                  const Icon(Icons.assignment_outlined,
-                      color: Colors.white24, size: 48),
+                  const Icon(
+                    Icons.assignment_outlined,
+                    color: Colors.white24,
+                    size: 48,
+                  ),
                   const SizedBox(height: 12),
-                  Text(context.tr('noTasksToAttack'),
-                      style: const TextStyle(
-                          color: Colors.white54,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600)),
+                  Text(
+                    context.tr('noTasksToAttack'),
+                    style: const TextStyle(
+                      color: Colors.white54,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   const SizedBox(height: 6),
-                  Text(context.tr('noTasksToAttackSub'),
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                          color: Colors.white38, fontSize: 12)),
+                  Text(
+                    context.tr('noTasksToAttackSub'),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.white38, fontSize: 12),
+                  ),
                 ],
               ),
             ),
           ] else
-            ...tasks.map((task) => _ArenaTaskCard(
-                  task: task,
-                  enabled: true,
-                  onTap: () => onTaskSelected(task),
-                )),
+            ...tasks.map(
+              (task) => _ArenaTaskCard(
+                task: task,
+                enabled: true,
+                onTap: () => onTaskSelected(task),
+              ),
+            ),
         ],
       ),
     );
@@ -3618,11 +4009,7 @@ class _ArenaTaskCard extends StatelessWidget {
   final bool enabled;
   final VoidCallback? onTap;
 
-  const _ArenaTaskCard({
-    required this.task,
-    required this.enabled,
-    this.onTap,
-  });
+  const _ArenaTaskCard({required this.task, required this.enabled, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -3658,8 +4045,10 @@ class _ArenaTaskCard extends StatelessWidget {
                     shape: BoxShape.circle,
                   ),
                   child: Center(
-                    child: Text('🥊${task.effort}',
-                        style: const TextStyle(fontSize: 13)),
+                    child: Text(
+                      '🥊${task.effort}',
+                      style: const TextStyle(fontSize: 13),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -3670,33 +4059,40 @@ class _ArenaTaskCard extends StatelessWidget {
                       Text(
                         task.title,
                         style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: enabled ? Colors.white : Colors.white38),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: enabled ? Colors.white : Colors.white38,
+                        ),
                         overflow: TextOverflow.ellipsis,
                         maxLines: 2,
                       ),
                       const SizedBox(height: 3),
-                      Row(children: [
-                        Icon(
-                          isRecurring ? Icons.repeat : Icons.event,
-                          size: 11,
-                          color: const Color(0xFF9575CD),
-                        ),
-                        const SizedBox(width: 3),
-                        Text(
-                          '${task.effort} dmg  ·  ${isRecurring ? task.repeat.name[0].toUpperCase() + task.repeat.name.substring(1) : 'One-time'}',
-                          style: const TextStyle(
-                              fontSize: 11, color: Colors.white38),
-                        ),
-                      ]),
+                      Row(
+                        children: [
+                          Icon(
+                            isRecurring ? Icons.repeat : Icons.event,
+                            size: 11,
+                            color: const Color(0xFF9575CD),
+                          ),
+                          const SizedBox(width: 3),
+                          Text(
+                            '${task.effort} ${context.tr('statsDmg')}  ·  ${isRecurring ? context.tr('repeat${task.repeat.name[0].toUpperCase()}${task.repeat.name.substring(1)}') : context.tr('oneTime')}',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Colors.white38,
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
                 if (enabled)
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 6),
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFE53935).withAlpha(180),
                       borderRadius: BorderRadius.circular(8),
@@ -3706,11 +4102,14 @@ class _ArenaTaskCard extends StatelessWidget {
                       children: [
                         Icon(Icons.bolt, size: 14, color: Colors.white),
                         SizedBox(width: 4),
-                        Text('GO',
-                            style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold)),
+                        Text(
+                          'GO',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -3768,7 +4167,9 @@ class _ArenaBattleDialogState extends State<_ArenaBattleDialog>
   void initState() {
     super.initState();
     _shakeCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 500));
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
     Future.delayed(const Duration(milliseconds: 400), _startBattle);
   }
 
@@ -3793,16 +4194,18 @@ class _ArenaBattleDialogState extends State<_ArenaBattleDialog>
     setState(() => _loading = true);
     try {
       final coinsEarned = await widget.onComplete();
-      final targetName = widget.target == null ? null
-          : (widget.target!.name.isNotEmpty ? widget.target!.name : widget.target!.email);
+      final targetName = widget.target == null
+          ? null
+          : (widget.target!.name.isNotEmpty
+                ? widget.target!.name
+                : widget.target!.email);
       final coinTxt = coinsEarned > 0
           ? context.trArgs('resultCoins', {'coins': '$coinsEarned'})
           : context.tr('resultNoCoinsToday');
       if (widget.attackerIsKO) {
         _resultMessage = context.tr('resultKO');
       } else if (widget.noAttacksLeft) {
-        _resultMessage =
-            '$coinTxt  ·  ${context.tr('resultNoDamageCap')}';
+        _resultMessage = '$coinTxt  ·  ${context.tr('resultNoDamageCap')}';
       } else if (targetName == null) {
         _resultMessage = coinTxt;
       } else {
@@ -3827,8 +4230,11 @@ class _ArenaBattleDialogState extends State<_ArenaBattleDialog>
   Widget build(BuildContext context) {
     final attackerSkin = widget.attacker?.characterSkin ?? 'warrior';
     final targetSkin = widget.target?.characterSkin ?? 'warrior';
-    final targetName = widget.target == null ? null
-        : (widget.target!.name.isNotEmpty ? widget.target!.name : widget.target!.email);
+    final targetName = widget.target == null
+        ? null
+        : (widget.target!.name.isNotEmpty
+              ? widget.target!.name
+              : widget.target!.email);
     final attackerName = widget.attacker?.name.isNotEmpty == true
         ? widget.attacker!.name
         : 'You';
@@ -3846,21 +4252,29 @@ class _ArenaBattleDialogState extends State<_ArenaBattleDialog>
               _phase == _ArenaBattlePhase.result
                   ? (widget.attackerIsKO ? '📋 Task Logged' : '🏆 Result')
                   : (widget.attackerIsKO
-                      ? '📋 Logging Task...'
-                      : _isSolo ? '✅ Completing...' : '🥊 Attacking!'),
+                        ? '📋 Logging Task...'
+                        : _isSolo
+                        ? '✅ Completing...'
+                        : '🥊 Attacking!'),
               style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.5),
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.5,
+              ),
             ),
             const SizedBox(height: 4),
-            Text(widget.task.title,
-                style: const TextStyle(color: Colors.white54, fontSize: 13)),
+            Text(
+              widget.task.title,
+              style: const TextStyle(color: Colors.white54, fontSize: 13),
+            ),
             if (widget.attackerIsKO) ...[
               const SizedBox(height: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.redAccent.withAlpha(30),
                   borderRadius: BorderRadius.circular(8),
@@ -3869,12 +4283,19 @@ class _ArenaBattleDialogState extends State<_ArenaBattleDialog>
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.warning_amber_rounded, color: Color(0xFFEF9A9A), size: 13),
+                    Icon(
+                      Icons.warning_amber_rounded,
+                      color: Color(0xFFEF9A9A),
+                      size: 13,
+                    ),
                     SizedBox(width: 5),
                     Flexible(
                       child: Text(
                         'You are K.O. — no coins or damage',
-                        style: TextStyle(color: Color(0xFFEF9A9A), fontSize: 11),
+                        style: TextStyle(
+                          color: Color(0xFFEF9A9A),
+                          fontSize: 11,
+                        ),
                       ),
                     ),
                   ],
@@ -3883,7 +4304,10 @@ class _ArenaBattleDialogState extends State<_ArenaBattleDialog>
             ] else if (widget.noAttacksLeft) ...[
               const SizedBox(height: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.orangeAccent.withAlpha(25),
                   borderRadius: BorderRadius.circular(8),
@@ -3892,12 +4316,19 @@ class _ArenaBattleDialogState extends State<_ArenaBattleDialog>
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.warning_amber_rounded, color: Color(0xFFFFCC80), size: 13),
+                    Icon(
+                      Icons.warning_amber_rounded,
+                      color: Color(0xFFFFCC80),
+                      size: 13,
+                    ),
                     SizedBox(width: 5),
                     Flexible(
                       child: Text(
                         'Attack cap reached — task still counts!',
-                        style: TextStyle(color: Color(0xFFFFCC80), fontSize: 11),
+                        style: TextStyle(
+                          color: Color(0xFFFFCC80),
+                          fontSize: 11,
+                        ),
                       ),
                     ),
                   ],
@@ -3928,140 +4359,163 @@ class _ArenaBattleDialogState extends State<_ArenaBattleDialog>
                             ),
                           ),
                           const SizedBox(height: 4),
-                          Text(attackerName,
-                              style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600),
-                              overflow: TextOverflow.ellipsis),
+                          Text(
+                            attackerName,
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ],
                       ),
                     )
                   : Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  // Attacker
-                  Column(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      AnimatedSlide(
-                        offset: (_phase == _ArenaBattlePhase.attacking ||
-                                _phase == _ArenaBattlePhase.hit)
-                            ? const Offset(0.4, 0)
-                            : Offset.zero,
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeInOut,
-                        child: FighterSprite(
-                          skin: attackerSkin,
-                          size: 90,
-                          pose: (_phase == _ArenaBattlePhase.attacking ||
-                                  _phase == _ArenaBattlePhase.hit)
-                              ? FighterPose.attack
-                              : FighterPose.idle,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(attackerName,
-                          style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600),
-                          overflow: TextOverflow.ellipsis),
-                    ],
-                  ),
-
-                  // Impact / VS indicator
-                  _phase == _ArenaBattlePhase.hit
-                      ? Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        // Attacker
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.end,
                           children: [
-                            _ExplosionBurst()
-                                .animate()
-                                .fade(begin: 0, end: 1, duration: 80.ms)
-                                .scale(
-                                    begin: const Offset(0.3, 0.3),
-                                    end: const Offset(1.2, 1.2),
-                                    duration: 220.ms,
-                                    curve: Curves.elasticOut),
+                            AnimatedSlide(
+                              offset:
+                                  (_phase == _ArenaBattlePhase.attacking ||
+                                      _phase == _ArenaBattlePhase.hit)
+                                  ? const Offset(0.4, 0)
+                                  : Offset.zero,
+                              duration: const Duration(milliseconds: 300),
+                              curve: Curves.easeInOut,
+                              child: FighterSprite(
+                                skin: attackerSkin,
+                                size: 90,
+                                pose:
+                                    (_phase == _ArenaBattlePhase.attacking ||
+                                        _phase == _ArenaBattlePhase.hit)
+                                    ? FighterPose.attack
+                                    : FighterPose.idle,
+                              ),
+                            ),
                             const SizedBox(height: 4),
-                            Text('-$damage HP',
-                                    style: const TextStyle(
-                                        color: Color(0xFFFF5252),
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold))
-                                .animate()
-                                .fadeIn(delay: 80.ms, duration: 150.ms),
+                            Text(
+                              attackerName,
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ],
-                        )
-                      : Text(
-                          'VS',
-                          style: TextStyle(
-                              color: _phase == _ArenaBattlePhase.attacking
-                                  ? const Color(0xFFFFD600)
-                                  : Colors.white24,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 2),
                         ),
 
-                  // Target
-                  Column(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      AnimatedBuilder(
-                        animation: _shakeCtrl,
-                        builder: (_, child) {
-                          final shake = _phase == _ArenaBattlePhase.hit
-                              ? math.sin(
-                                      _shakeCtrl.value * math.pi * 10) *
-                                  12.0 *
-                                  (1 - _shakeCtrl.value)
-                              : 0.0;
-                          final tintAlpha =
-                              (math.sin(_shakeCtrl.value * math.pi) * 180)
-                                  .clamp(0, 180)
-                                  .toInt();
-                          return Transform.translate(
-                            offset: Offset(shake, 0),
-                            child: Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                Transform.scale(
-                                  scaleX: -1,
-                                  child: FighterSprite(
-                                    skin: targetSkin,
-                                    size: 90,
-                                    pose: _phase == _ArenaBattlePhase.hit
-                                        ? FighterPose.hit
-                                        : FighterPose.idle,
+                        // Impact / VS indicator
+                        _phase == _ArenaBattlePhase.hit
+                            ? Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  _ExplosionBurst()
+                                      .animate()
+                                      .fade(begin: 0, end: 1, duration: 80.ms)
+                                      .scale(
+                                        begin: const Offset(0.3, 0.3),
+                                        end: const Offset(1.2, 1.2),
+                                        duration: 220.ms,
+                                        curve: Curves.elasticOut,
+                                      ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '-$damage HP',
+                                    style: const TextStyle(
+                                      color: Color(0xFFFF5252),
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ).animate().fadeIn(
+                                    delay: 80.ms,
+                                    duration: 150.ms,
                                   ),
+                                ],
+                              )
+                            : Text(
+                                'VS',
+                                style: TextStyle(
+                                  color: _phase == _ArenaBattlePhase.attacking
+                                      ? const Color(0xFFFFD600)
+                                      : Colors.white24,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 2,
                                 ),
-                                if (_phase == _ArenaBattlePhase.hit)
-                                  Container(
-                                    width: 90,
-                                    height: 90,
-                                    decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: Color.fromARGB(
-                                            tintAlpha, 255, 50, 50)),
+                              ),
+
+                        // Target
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            AnimatedBuilder(
+                              animation: _shakeCtrl,
+                              builder: (_, child) {
+                                final shake = _phase == _ArenaBattlePhase.hit
+                                    ? math.sin(
+                                            _shakeCtrl.value * math.pi * 10,
+                                          ) *
+                                          12.0 *
+                                          (1 - _shakeCtrl.value)
+                                    : 0.0;
+                                final tintAlpha =
+                                    (math.sin(_shakeCtrl.value * math.pi) * 180)
+                                        .clamp(0, 180)
+                                        .toInt();
+                                return Transform.translate(
+                                  offset: Offset(shake, 0),
+                                  child: Stack(
+                                    alignment: Alignment.center,
+                                    children: [
+                                      Transform.scale(
+                                        scaleX: -1,
+                                        child: FighterSprite(
+                                          skin: targetSkin,
+                                          size: 90,
+                                          pose: _phase == _ArenaBattlePhase.hit
+                                              ? FighterPose.hit
+                                              : FighterPose.idle,
+                                        ),
+                                      ),
+                                      if (_phase == _ArenaBattlePhase.hit)
+                                        Container(
+                                          width: 90,
+                                          height: 90,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: Color.fromARGB(
+                                              tintAlpha,
+                                              255,
+                                              50,
+                                              50,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
                                   ),
-                              ],
+                                );
+                              },
                             ),
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 4),
-                      Text(targetName ?? '???',
-                          style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600),
-                          overflow: TextOverflow.ellipsis),
-                    ],
-                  ),
-                ],
-              ),
+                            const SizedBox(height: 4),
+                            Text(
+                              targetName ?? '???',
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
             ),
 
             const SizedBox(height: 24),
@@ -4084,25 +4538,28 @@ class _ArenaBattleDialogState extends State<_ArenaBattleDialog>
                     _resultMessage,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        height: 1.6),
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      height: 1.6,
+                    ),
                   ),
                   const SizedBox(height: 20),
                   ElevatedButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Continue'),
+                    child: Text(context.tr('continueBtn')),
                   ),
                 ],
               )
             else
               Text(
                 _phase == _ArenaBattlePhase.idle
-                    ? 'Preparing...'
+                    ? context.tr('preparing')
                     : _phase == _ArenaBattlePhase.attacking
-                        ? (_isSolo ? 'Completing...' : 'Attacking!')
-                        : 'Hit!',
+                    ? (_isSolo
+                          ? context.tr('completing')
+                          : context.tr('attacking'))
+                    : context.tr('hit'),
                 style: const TextStyle(color: Colors.white54, fontSize: 13),
               ),
           ],
