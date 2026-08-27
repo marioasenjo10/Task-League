@@ -70,6 +70,10 @@ class _ArenaScreenState extends ConsumerState<ArenaScreen>
   Widget build(BuildContext context) {
     final leagueAsync = ref.watch(leagueProvider(widget.leagueId));
 
+    // Ensure every member's HP is reset when a new period starts, even if the
+    // Arena is opened directly without going through the league hub first.
+    ref.watch(periodHpResetProvider(widget.leagueId));
+
     return Scaffold(
       backgroundColor: const Color(0xFF0D0D1A),
       appBar: AppBar(
