@@ -102,6 +102,6 @@ Download it and turn your to-do list into a to-done list.
 ---
 
 ## URLs necesarias en Play Console
-- Política de privacidad: `https://marioasenjo10.github.io/Task-League/privacy.html`
-- Eliminación de cuenta: `https://marioasenjo10.github.io/Task-League/delete-account.html`
+- Política de privacidad: `https://taskleague.eu/privacy.html`
+- Eliminación de cuenta: `https://taskleague.eu/delete-account.html`
 - Email de contacto: marioasenjov@gmail.com
