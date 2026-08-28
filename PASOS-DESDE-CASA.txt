@@ -70,6 +70,39 @@ Ese .aab es lo que se sube a Google Play (NO un .apk).
  queda en build/app/outputs/flutter-apk/app-release.apk )
 
 ------------------------------------------------------------------------
+4-BIS. TESTEAR EN ANDROID STUDIO (antes de compilar el .aab)
+------------------------------------------------------------------------
+IMPORTANTE: el archivo .aab NO se instala en un movil ni sirve para
+probar. El .aab es SOLO para subir a Google Play. Para testear en local
+se usa "flutter run" o un .apk.
+
+Preparar un dispositivo:
+  - Movil fisico: activar "Opciones de desarrollador" y "Depuracion USB"
+    (Ajustes > Info del telefono > pulsar 7 veces en "Numero de
+     compilacion"; luego Ajustes > Opciones de desarrollador > Depuracion
+     USB = ON). Conectar por USB.
+  - O emulador: Android Studio > Device Manager > Create Device.
+
+Comprobar que el dispositivo se ve:
+      flutter devices
+
+OPCION 1 - Probar en desarrollo (lo normal, anuncios de TEST/seguros):
+      flutter run
+  -> Arranca en modo debug. Los anuncios que salgan son de PRUEBA.
+     Puedes hacer clic en ellos sin problema.
+
+OPCION 2 - Probar la version release (anuncios REALES):
+      flutter build apk --release
+      flutter install
+  -> Instala la app tal cual saldra publicada.
+  -> ⚠️ AQUI LOS ANUNCIOS SON REALES: NO hagas clic en ellos, AdMob puede
+     banear la cuenta por fraude. Solo comprueba que cargan.
+
+(La mejor prueba final "como en Play" es subir el .aab a "Pruebas
+ internas" en Play Console y descargar la app desde el movil con el
+ enlace de testers. Ver paso 5.)
+
+------------------------------------------------------------------------
 5. SUBIR A GOOGLE PLAY CONSOLE
 ------------------------------------------------------------------------
 - Entrar en https://play.google.com/console  (cuenta de desarrollador,
