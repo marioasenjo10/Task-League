@@ -109,16 +109,16 @@ class HomeScreen extends ConsumerWidget {
                     children: [
                       const CircularProgressIndicator(),
                       const SizedBox(height: 20),
-                      const Text(
-                        'Syncing Google Calendar…',
-                        style: TextStyle(
+                      Text(
+                        context.tr('syncingCalendar'),
+                        style: const TextStyle(
                             fontWeight: FontWeight.bold, fontSize: 16),
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Connecting your tasks to Google Calendar.\nThis only takes a moment.',
+                        context.tr('syncingCalendarSub'),
                         textAlign: TextAlign.center,
-                        style: TextStyle(
+                        style: const TextStyle(
                             color: Colors.white54, fontSize: 13),
                       ),
                     ],

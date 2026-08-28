@@ -167,7 +167,7 @@ class _ProfileContent extends ConsumerWidget {
           Text(context.tr('chooseFighter'),
               style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 4),
-          Text('Unlock new fighters with 🪙 coins',
+          Text(context.tr('unlockFightersWithCoins'),
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
                     color: Colors.white38,
                   )),

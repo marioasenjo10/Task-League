@@ -21,8 +21,10 @@ class AdsService {
   static const String _iosRewardedTest =
       'ca-app-pub-3940256099942544/1712485313';
 
-  // TODO: replace with your real AdMob rewarded ad unit ids before release.
-  static const String _androidRewardedProd = _androidRewardedTest;
+  // Real AdMob rewarded ad unit ids (production).
+  static const String _androidRewardedProd =
+      'ca-app-pub-6185468394048368/2571248002';
+  // iOS not published yet — keep the public test id until a real unit exists.
   static const String _iosRewardedProd = _iosRewardedTest;
 
   /// While true we always serve TEST ads. Automatically enabled in debug and

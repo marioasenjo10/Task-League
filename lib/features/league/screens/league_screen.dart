@@ -45,7 +45,10 @@ class LeagueScreen extends ConsumerWidget {
                 children: [
                   Text(
                     league.name,
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   Text(
                     '$memberCount ${memberCount == 1 ? 'fighter' : 'fighters'} · $typeLabel',
@@ -59,8 +62,7 @@ class LeagueScreen extends ConsumerWidget {
         ),
         actions: [
           // ── Coins chip ──────────────────────────────────────────────
-          if (currentUser != null)
-            CoinsChip(coins: currentUser.coins),
+          if (currentUser != null) CoinsChip(coins: currentUser.coins),
           // ── Notification bell ───────────────────────────────────────
           IconButton(
             tooltip: 'Notifications',
@@ -91,13 +93,17 @@ class LeagueScreen extends ConsumerWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.error_outline,
-                    color: Colors.redAccent, size: 48),
+                const Icon(
+                  Icons.error_outline,
+                  color: Colors.redAccent,
+                  size: 48,
+                ),
                 const SizedBox(height: 12),
-                Text(e.toString(),
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                        color: Colors.white54, fontSize: 13)),
+                Text(
+                  e.toString(),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.white54, fontSize: 13),
+                ),
               ],
             ),
           ),
@@ -110,12 +116,16 @@ class LeagueScreen extends ConsumerWidget {
   }
 
   void _showNotificationsPanel(
-      BuildContext context, WidgetRef ref, String leagueId) {
+    BuildContext context,
+    WidgetRef ref,
+    String leagueId,
+  ) {
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF1A1A2E),
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (ctx) => _NotificationsSheet(leagueId: leagueId),
     );
   }
@@ -184,13 +194,16 @@ class _LeagueBodyState extends ConsumerState<_LeagueBody> {
     int attacksLeft = kMaxDailyAttacks;
     if (currentUser != null) {
       final todayStr = DateTime.now().toIso8601String().substring(0, 10);
-      final used = currentUser.lastAttackDate == todayStr ? currentUser.todayAttacks : 0;
+      final used = currentUser.lastAttackDate == todayStr
+          ? currentUser.todayAttacks
+          : 0;
       attacksLeft = (kMaxDailyAttacks - used).clamp(0, kMaxDailyAttacks);
     }
 
     // Shield info
     final shieldExpiry = currentUser?.shieldByLeague[leagueId];
-    final hasShield = shieldExpiry != null &&
+    final hasShield =
+        shieldExpiry != null &&
         DateTime.now().toUtc().isBefore(DateTime.parse(shieldExpiry));
 
     return SingleChildScrollView(
@@ -242,8 +255,8 @@ class _NavGrid extends StatelessWidget {
     final attackColor = attacksLeft > 2
         ? const Color(0xFF4CAF50)
         : attacksLeft > 0
-            ? const Color(0xFFFFC107)
-            : Colors.white24;
+        ? const Color(0xFFFFC107)
+        : Colors.white24;
 
     return Column(
       children: [
@@ -344,9 +357,14 @@ class _NavTile extends StatelessWidget {
                   ),
                 ),
               ),
-              if (badge != null) badge!
+              if (badge != null)
+                badge!
               else
-                Icon(Icons.chevron_right, color: Colors.white.withAlpha(50), size: 16),
+                Icon(
+                  Icons.chevron_right,
+                  color: Colors.white.withAlpha(50),
+                  size: 16,
+                ),
             ],
           ),
         ),
@@ -419,8 +437,12 @@ class _LeaguePeriodResultsBannerState
     }
 
     final currentUid = ref.watch(authStateProvider).valueOrNull?.uid;
-    final prevAsync = ref.watch(previousPeriodRankingProvider(
-        (leagueId: widget.leagueId, type: widget.leagueType)));
+    final prevAsync = ref.watch(
+      previousPeriodRankingProvider((
+        leagueId: widget.leagueId,
+        type: widget.leagueType,
+      )),
+    );
 
     return prevAsync.when(
       loading: () => const SizedBox.shrink(),
@@ -472,8 +494,11 @@ class _LeaguePeriodResultsBannerState
                   padding: const EdgeInsets.fromLTRB(14, 12, 8, 8),
                   child: Row(
                     children: [
-                      const Icon(Icons.emoji_events,
-                          color: Color(0xFFFFD700), size: 18),
+                      const Icon(
+                        Icons.emoji_events,
+                        color: Color(0xFFFFD700),
+                        size: 18,
+                      ),
                       const SizedBox(width: 8),
                       Text(
                         '$periodLabel\'s results',
@@ -486,8 +511,11 @@ class _LeaguePeriodResultsBannerState
                       ),
                       const Spacer(),
                       IconButton(
-                        icon: const Icon(Icons.close,
-                            color: Colors.white38, size: 16),
+                        icon: const Icon(
+                          Icons.close,
+                          color: Colors.white38,
+                          size: 16,
+                        ),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
                         onPressed: () => setState(() => _dismissed = true),
@@ -511,11 +539,15 @@ class _LeaguePeriodResultsBannerState
                       return Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(medals[e.key],
-                              style: const TextStyle(fontSize: 18)),
+                          Text(
+                            medals[e.key],
+                            style: const TextStyle(fontSize: 18),
+                          ),
                           const SizedBox(width: 5),
                           FighterSprite(
-                              skin: entry.member.characterSkin, size: 30),
+                            skin: entry.member.characterSkin,
+                            size: 30,
+                          ),
                           const SizedBox(width: 5),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -530,9 +562,13 @@ class _LeaguePeriodResultsBannerState
                                       : Colors.white,
                                 ),
                               ),
-                              Text('${entry.tasks} tasks',
-                                  style: const TextStyle(
-                                      fontSize: 9, color: Colors.white38)),
+                              Text(
+                                '${entry.tasks} tasks',
+                                style: const TextStyle(
+                                  fontSize: 9,
+                                  color: Colors.white38,
+                                ),
+                              ),
                             ],
                           ),
                         ],
@@ -543,30 +579,41 @@ class _LeaguePeriodResultsBannerState
                 // Your result if not top 3
                 if (currentUid != null && yourRank > 3) ...[
                   const Divider(
-                      color: Colors.white12, height: 1, indent: 14, endIndent: 14),
+                    color: Colors.white12,
+                    height: 1,
+                    indent: 14,
+                    endIndent: 14,
+                  ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
                     child: Row(
                       children: [
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: const Color(0xFF6C3CE1).withAlpha(80),
                             borderRadius: BorderRadius.circular(4),
                           ),
-                          child: const Text('YOU',
-                              style: TextStyle(
-                                  color: Color(0xFFB39DDB),
-                                  fontSize: 8,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 1)),
+                          child: const Text(
+                            'YOU',
+                            style: TextStyle(
+                              color: Color(0xFFB39DDB),
+                              fontSize: 8,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1,
+                            ),
+                          ),
                         ),
                         const SizedBox(width: 8),
                         Text(
                           '#$yourRank · ${youEntry.tasks} tasks · ${youEntry.damage} dmg',
                           style: const TextStyle(
-                              color: Colors.white54, fontSize: 11),
+                            color: Colors.white54,
+                            fontSize: 11,
+                          ),
                         ),
                       ],
                     ),
@@ -624,25 +671,34 @@ class _NotificationsSheet extends ConsumerWidget {
                 const SizedBox(height: 14),
                 Row(
                   children: [
-                    const Icon(Icons.notifications_outlined,
-                        color: Color(0xFFB39DDB), size: 20),
+                    const Icon(
+                      Icons.notifications_outlined,
+                      color: Color(0xFFB39DDB),
+                      size: 20,
+                    ),
                     const SizedBox(width: 8),
                     const Text(
                       'Notifications',
                       style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold),
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const Spacer(),
                     notifAsync.maybeWhen(
                       data: (events) => events.isNotEmpty
                           ? TextButton(
-                              onPressed: () =>
-                                  ref.read(notifSeenProvider(leagueId).notifier).markSeen(),
-                              child: const Text('Mark all read',
-                                  style: TextStyle(
-                                      color: Color(0xFFB39DDB), fontSize: 11)),
+                              onPressed: () => ref
+                                  .read(notifSeenProvider(leagueId).notifier)
+                                  .markSeen(),
+                              child: const Text(
+                                'Mark all read',
+                                style: TextStyle(
+                                  color: Color(0xFFB39DDB),
+                                  fontSize: 11,
+                                ),
+                              ),
                             )
                           : const SizedBox.shrink(),
                       orElse: () => const SizedBox.shrink(),
@@ -658,23 +714,29 @@ class _NotificationsSheet extends ConsumerWidget {
           // ── List ─────────────────────────────────────────────────
           Expanded(
             child: notifAsync.when(
-              loading: () =>
-                  const Center(child: CircularProgressIndicator()),
+              loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => Center(
-                  child: Text('Error: $e',
-                      style: const TextStyle(color: Colors.white54))),
+                child: Text(
+                  'Error: $e',
+                  style: const TextStyle(color: Colors.white54),
+                ),
+              ),
               data: (events) {
                 if (events.isEmpty) {
                   return const Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.shield_outlined,
-                            size: 48, color: Colors.white24),
+                        Icon(
+                          Icons.shield_outlined,
+                          size: 48,
+                          color: Colors.white24,
+                        ),
                         SizedBox(height: 12),
-                        Text('No attacks received yet',
-                            style: TextStyle(
-                                color: Colors.white54, fontSize: 13)),
+                        Text(
+                          'No attacks received yet',
+                          style: TextStyle(color: Colors.white54, fontSize: 13),
+                        ),
                       ],
                     ),
                   );
@@ -691,7 +753,9 @@ class _NotificationsSheet extends ConsumerWidget {
                     return Container(
                       margin: const EdgeInsets.only(bottom: 8),
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 10),
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
                       decoration: BoxDecoration(
                         color: isNew
                             ? const Color(0xFFE53935).withAlpha(18)
@@ -709,13 +773,11 @@ class _NotificationsSheet extends ConsumerWidget {
                             width: 36,
                             height: 36,
                             decoration: BoxDecoration(
-                              color:
-                                  const Color(0xFFE53935).withAlpha(30),
+                              color: const Color(0xFFE53935).withAlpha(30),
                               shape: BoxShape.circle,
                             ),
                             child: const Center(
-                              child: Text('⚔️',
-                                  style: TextStyle(fontSize: 18)),
+                              child: Text('⚔️', style: TextStyle(fontSize: 18)),
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -728,15 +790,18 @@ class _NotificationsSheet extends ConsumerWidget {
                                   style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.bold,
-                                    color:
-                                        isNew ? Colors.white : Colors.white70,
+                                    color: isNew
+                                        ? Colors.white
+                                        : Colors.white70,
                                   ),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
                                   '${e.taskTitle}  -${e.damageDealt} HP',
                                   style: const TextStyle(
-                                      fontSize: 11, color: Colors.white54),
+                                    fontSize: 11,
+                                    color: Colors.white54,
+                                  ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ],
@@ -758,7 +823,9 @@ class _NotificationsSheet extends ConsumerWidget {
                               Text(
                                 timeAgo,
                                 style: const TextStyle(
-                                    fontSize: 10, color: Colors.white38),
+                                  fontSize: 10,
+                                  color: Colors.white38,
+                                ),
                               ),
                             ],
                           ),
@@ -792,7 +859,7 @@ class _NotificationsSheet extends ConsumerWidget {
 enum _TaskUrgency { overdue, today, upcoming }
 
 _TaskUrgency _taskUrgency(TaskModel t) {
-  final date = t.dueDate ?? t.scheduledAt;
+  final date = t.scheduledAt ?? t.dueDate;
   if (date == null) return _TaskUrgency.upcoming;
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
@@ -802,17 +869,18 @@ _TaskUrgency _taskUrgency(TaskModel t) {
   return _TaskUrgency.upcoming;
 }
 
-String _taskDateLabel(TaskModel t) {
-  final date = t.dueDate ?? t.scheduledAt;
+String _taskDateLabel(TaskModel t, BuildContext context) {
+  final date = t.scheduledAt ?? t.dueDate;
   if (date == null) return '';
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
   final taskDay = DateTime(date.year, date.month, date.day);
   final diff = taskDay.difference(today).inDays;
-  if (diff < 0) return 'Overdue ${-diff}d';
-  if (diff == 0) return 'Today';
-  if (diff == 1) return 'Tomorrow';
-  return 'In ${diff}d';
+  if (diff < 0)
+    return context.trArgs('previewOverdueDays', {'days': '${-diff}'});
+  if (diff == 0) return context.tr('previewToday');
+  if (diff == 1) return context.tr('previewTomorrow');
+  return context.trArgs('previewInDays', {'days': '$diff'});
 }
 
 class _MyTasksPreview extends ConsumerStatefulWidget {
@@ -841,17 +909,21 @@ class _MyTasksPreviewState extends ConsumerState<_MyTasksPreview> {
       final ua = _taskUrgency(a).index;
       final ub = _taskUrgency(b).index;
       if (ua != ub) return ua.compareTo(ub);
-      final da = a.dueDate ?? a.scheduledAt;
-      final db = b.dueDate ?? b.scheduledAt;
+      final da = a.scheduledAt ?? a.dueDate;
+      final db = b.scheduledAt ?? b.dueDate;
       if (da == null && db == null) return 0;
       if (da == null) return 1;
       if (db == null) return -1;
       return da.compareTo(db);
     });
 
-    final overdueCount = all.where((t) => _taskUrgency(t) == _TaskUrgency.overdue).length;
-    final todayCount   = all.where((t) => _taskUrgency(t) == _TaskUrgency.today).length;
-    final preview = all.take(5).toList();
+    final overdueCount = all
+        .where((t) => _taskUrgency(t) == _TaskUrgency.overdue)
+        .length;
+    final todayCount = all
+        .where((t) => _taskUrgency(t) == _TaskUrgency.today)
+        .length;
+    final preview = all.take(3).toList();
 
     if (all.isEmpty && !upcomingAsync.isLoading && !recurringAsync.isLoading) {
       return const SizedBox.shrink();
@@ -875,15 +947,15 @@ class _MyTasksPreviewState extends ConsumerState<_MyTasksPreview> {
                     color: overdueCount > 0
                         ? const Color(0xFFE53935)
                         : todayCount > 0
-                            ? const Color(0xFFFFC107)
-                            : const Color(0xFF6C3CE1),
+                        ? const Color(0xFFFFC107)
+                        : const Color(0xFF6C3CE1),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
                 const SizedBox(width: 8),
-                const Text(
-                  'MY TASKS',
-                  style: TextStyle(
+                Text(
+                  context.tr('upcomingTasks').toUpperCase(),
+                  style: const TextStyle(
                     color: Colors.white38,
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
@@ -892,10 +964,20 @@ class _MyTasksPreviewState extends ConsumerState<_MyTasksPreview> {
                 ),
                 const SizedBox(width: 8),
                 if (overdueCount > 0)
-                  _TaskBadge(label: '$overdueCount overdue', color: const Color(0xFFE53935)),
+                  _TaskBadge(
+                    label: context.trArgs('previewOverdueCount', {
+                      'count': '$overdueCount',
+                    }),
+                    color: const Color(0xFFE53935),
+                  ),
                 if (todayCount > 0) ...[
                   const SizedBox(width: 4),
-                  _TaskBadge(label: '$todayCount today', color: const Color(0xFFFFC107)),
+                  _TaskBadge(
+                    label: context.trArgs('previewTodayCount', {
+                      'count': '$todayCount',
+                    }),
+                    color: const Color(0xFFFFC107),
+                  ),
                 ],
                 const Spacer(),
                 Icon(
@@ -915,21 +997,24 @@ class _MyTasksPreviewState extends ConsumerState<_MyTasksPreview> {
               padding: EdgeInsets.symmetric(vertical: 12),
               child: Center(
                 child: SizedBox(
-                  width: 20, height: 20,
+                  width: 20,
+                  height: 20,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
               ),
             )
           else
-            ...preview.map((task) => _TaskPreviewRow(
-                  task: task,
-                  leagueId: widget.leagueId,
-                  league: league,
-                  onCompleted: () {
-                    ref.invalidate(myUpcomingTasksProvider(widget.leagueId));
-                    ref.invalidate(myRecurringTasksProvider(widget.leagueId));
-                  },
-                )),
+            ...preview.map(
+              (task) => _TaskPreviewRow(
+                task: task,
+                leagueId: widget.leagueId,
+                league: league,
+                onCompleted: () {
+                  ref.invalidate(myUpcomingTasksProvider(widget.leagueId));
+                  ref.invalidate(myRecurringTasksProvider(widget.leagueId));
+                },
+              ),
+            ),
           if (all.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 4),
@@ -939,7 +1024,11 @@ class _MyTasksPreviewState extends ConsumerState<_MyTasksPreview> {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     Text(
-                      all.length > 5 ? 'See all ${all.length} tasks →' : 'Go to Tasks →',
+                      all.length > 3
+                          ? context.trArgs('seeAllTasks', {
+                              'count': '${all.length}',
+                            })
+                          : context.tr('goToTasks'),
                       style: const TextStyle(
                         color: Color(0xFF9575CD),
                         fontSize: 12,
@@ -973,7 +1062,7 @@ class _TaskPreviewRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final urgency = _taskUrgency(task);
-    final dateLabel = _taskDateLabel(task);
+    final dateLabel = _taskDateLabel(task, context);
     final isRecurring = task.repeat != TaskRepeat.none;
 
     final Color urgencyColor;
@@ -998,7 +1087,9 @@ class _TaskPreviewRow extends ConsumerWidget {
           color: bgColor.withAlpha(urgency == _TaskUrgency.upcoming ? 8 : 15),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: bgColor.withAlpha(urgency == _TaskUrgency.upcoming ? 20 : 60),
+            color: bgColor.withAlpha(
+              urgency == _TaskUrgency.upcoming ? 20 : 60,
+            ),
           ),
         ),
         child: Row(
@@ -1051,18 +1142,30 @@ class _TaskPreviewRow extends ConsumerWidget {
                         const SizedBox(width: 8),
                       ],
                       if (isRecurring) ...[
-                        const Icon(Icons.repeat, size: 11, color: Colors.white24),
+                        const Icon(
+                          Icons.repeat,
+                          size: 11,
+                          color: Colors.white24,
+                        ),
                         const SizedBox(width: 3),
                         Text(
-                          task.repeat.name,
-                          style: const TextStyle(fontSize: 10, color: Colors.white24),
+                          context.tr(
+                            'repeat${task.repeat.name[0].toUpperCase()}${task.repeat.name.substring(1)}',
+                          ),
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Colors.white24,
+                          ),
                         ),
                         const SizedBox(width: 8),
                       ],
                       const Icon(Icons.bolt, size: 11, color: Colors.white24),
                       Text(
                         '${task.effort}',
-                        style: const TextStyle(fontSize: 10, color: Colors.white24),
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: Colors.white24,
+                        ),
                       ),
                     ],
                   ),
@@ -1116,7 +1219,12 @@ class _QuickCompleteButtonState extends ConsumerState<_QuickCompleteButton> {
           final maxHp = maxHpForType(widget.league!.competitionType);
           // Open opponent picker → battle animation with this specific task
           await showArenaAttackDialogWithTask(
-              context, ref, widget.task, widget.leagueId, maxHp);
+            context,
+            ref,
+            widget.task,
+            widget.leagueId,
+            maxHp,
+          );
           widget.onCompleted();
         },
         child: AnimatedContainer(

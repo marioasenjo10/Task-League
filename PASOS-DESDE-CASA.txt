@@ -1,0 +1,148 @@
+========================================================================
+  TASK LEAGUE — PASOS PARA COMPILAR Y PUBLICAR DESDE CASA
+  (Este PC del trabajo NO puede compilar Android. Todo esto se hace en casa.)
+  Ultima actualizacion: 28/08/2026
+========================================================================
+
+------------------------------------------------------------------------
+0. REQUISITOS EN EL PC DE CASA (solo la primera vez)
+------------------------------------------------------------------------
+- Tener instalado Flutter SDK y Android Studio (con Android SDK).
+- Tener activado el "Modo de desarrollador" de Windows
+  (Ajustes > Privacidad y seguridad > Para programadores > Modo de
+   desarrollador = ACTIVADO). Flutter lo necesita para los symlinks.
+- Comprobar que todo esta OK:
+      flutter doctor
+  (Todas las lineas deben salir con tick verde, o al menos Android.)
+
+------------------------------------------------------------------------
+1. TRAER EL CODIGO ACTUALIZADO (Git)
+------------------------------------------------------------------------
+Abrir terminal en la carpeta del proyecto y ejecutar:
+
+      git pull origin master
+
+Esto trae TODO lo ya hecho: correcciones de bugs, IDs reales de AdMob,
+config de dominio, etc.
+
+------------------------------------------------------------------------
+2. COLOCAR EL KEYSTORE (¡IMPORTANTE! No viaja por Git)
+------------------------------------------------------------------------
+El archivo de firma "upload-keystore.jks" esta en .gitignore, asi que
+NO se descarga con git pull. Tienes que tenerlo fisicamente en el PC de
+casa, en esta ruta EXACTA dentro del proyecto:
+
+      android/upload-keystore.jks
+
+Si no lo tienes en casa, copialo desde donde lo guardaste (USB, nube
+privada, etc.). Datos de la firma (ya configurados en android/key.properties):
+
+      storePassword = taskfight2024
+      keyPassword   = taskfight2024
+      keyAlias      = upload
+      storeFile     = ../upload-keystore.jks
+
+NO subas nunca el .jks ni el key.properties a Git (son secretos).
+
+Para comprobar que el keystore esta y es valido:
+      keytool -list -v -keystore android/upload-keystore.jks
+      (te pedira la password: taskfight2024)
+
+------------------------------------------------------------------------
+3. LIMPIAR Y OBTENER DEPENDENCIAS
+------------------------------------------------------------------------
+      flutter clean
+      flutter pub get
+
+------------------------------------------------------------------------
+4. COMPILAR EL APP BUNDLE FIRMADO (.aab) PARA GOOGLE PLAY
+------------------------------------------------------------------------
+      flutter build appbundle --release
+
+Al terminar, el archivo estara en:
+
+      build/app/outputs/bundle/release/app-release.aab
+
+Ese .aab es lo que se sube a Google Play (NO un .apk).
+
+(Opcional, si quieres probar un APK en un movil fisico antes:
+      flutter build apk --release
+ queda en build/app/outputs/flutter-apk/app-release.apk )
+
+------------------------------------------------------------------------
+4-BIS. TESTEAR EN ANDROID STUDIO (antes de compilar el .aab)
+------------------------------------------------------------------------
+IMPORTANTE: el archivo .aab NO se instala en un movil ni sirve para
+probar. El .aab es SOLO para subir a Google Play. Para testear en local
+se usa "flutter run" o un .apk.
+
+Preparar un dispositivo:
+  - Movil fisico: activar "Opciones de desarrollador" y "Depuracion USB"
+    (Ajustes > Info del telefono > pulsar 7 veces en "Numero de
+     compilacion"; luego Ajustes > Opciones de desarrollador > Depuracion
+     USB = ON). Conectar por USB.
+  - O emulador: Android Studio > Device Manager > Create Device.
+
+Comprobar que el dispositivo se ve:
+      flutter devices
+
+OPCION 1 - Probar en desarrollo (lo normal, anuncios de TEST/seguros):
+      flutter run
+  -> Arranca en modo debug. Los anuncios que salgan son de PRUEBA.
+     Puedes hacer clic en ellos sin problema.
+
+OPCION 2 - Probar la version release (anuncios REALES):
+      flutter build apk --release
+      flutter install
+  -> Instala la app tal cual saldra publicada.
+  -> ⚠️ AQUI LOS ANUNCIOS SON REALES: NO hagas clic en ellos, AdMob puede
+     banear la cuenta por fraude. Solo comprueba que cargan.
+
+(La mejor prueba final "como en Play" es subir el .aab a "Pruebas
+ internas" en Play Console y descargar la app desde el movil con el
+ enlace de testers. Ver paso 5.)
+
+------------------------------------------------------------------------
+5. SUBIR A GOOGLE PLAY CONSOLE
+------------------------------------------------------------------------
+- Entrar en https://play.google.com/console  (cuenta de desarrollador,
+  pago unico de 25 USD si aun no la tienes).
+- Crear la app (si no existe): nombre "Task League", idioma, gratuita.
+- Ir a "Producción" (o primero "Pruebas internas" para probar) y crear
+  una nueva version (release).
+- Subir el archivo app-release.aab del paso 4.
+- Rellenar la ficha de Play Store. Tienes textos preparados en:
+      docs/store-listing.md
+- Completar los cuestionarios obligatorios de Play:
+    * Clasificacion de contenido.
+    * Publico objetivo y contenido (edad).
+    * Seguridad de los datos (Data safety): declara que usas
+      Google (login), Firebase/Firestore y AdMob (publicidad).
+    * Politica de privacidad: URL -> https://taskleague.eu/privacy.html
+- Enviar a revision.
+
+------------------------------------------------------------------------
+6. RECORDATORIOS / ESTADO ACTUAL (a 28/08/2026)
+------------------------------------------------------------------------
+- OAuth: la verificacion de MARCA/HOMEPAGE ya esta APROBADA (dominio
+  propio taskleague.eu).
+- OAuth: el permiso sensible de Google Calendar (calendar.events) esta
+  EN REVISION por Google. La app funciona igual mientras tanto; puede que
+  Google pida un video de demostracion del flujo (login -> activar sync
+  de calendario -> crear tarea con fecha -> ver el evento en Google
+  Calendar). Si lo piden, preparar ese video.
+- AdMob (Android) YA con IDs reales de produccion:
+      App ID    : ca-app-pub-6185468394048368~9926993842
+      Rewarded  : ca-app-pub-6185468394048368/2571248002
+  En modo debug se siguen viendo anuncios de TEST (normal y correcto);
+  los anuncios reales solo salen en la build --release.
+- iOS: NO configurado todavia (sigue con IDs de test). Solo hace falta
+  si algun dia publicas en App Store.
+
+------------------------------------------------------------------------
+7. NOTA SOBRE ESTE PC DEL TRABAJO (por si vuelves a el)
+------------------------------------------------------------------------
+- Aqui NO se puede compilar Android (Modo desarrollador/symlinks
+  bloqueados por politicas de grupo). Por eso el build se hace en casa.
+- El resto (editar codigo, git, Firebase Hosting, web) si funciona aqui.
+========================================================================

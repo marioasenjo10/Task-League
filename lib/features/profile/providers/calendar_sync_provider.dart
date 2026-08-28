@@ -43,11 +43,15 @@ class CalendarSyncNotifier extends Notifier<bool> {
       final calendarService = ref.read(googleCalendarServiceProvider);
 
       // 1. Try silent restore first
-      bool sessionReady = await calendarService.restoreSilentSignIn();
+      bool sessionReady = await calendarService
+          .restoreSilentSignIn()
+          .timeout(const Duration(seconds: 15), onTimeout: () => false);
       debugPrint('[CalendarSync] silent restore → $sessionReady');        // 2. If silent failed, show the Google popup directly (no extra silent attempt)
         if (!sessionReady) {
           debugPrint('[CalendarSync] silent failed → requesting access with popup');
-          sessionReady = await calendarService.requestAccess(skipSilent: true);
+          sessionReady = await calendarService
+              .requestAccess(skipSilent: true)
+              .timeout(const Duration(seconds: 60), onTimeout: () => false);
           debugPrint('[CalendarSync] popup result → $sessionReady');
         }
 

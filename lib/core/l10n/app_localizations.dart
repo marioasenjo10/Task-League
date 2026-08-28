@@ -30,6 +30,9 @@ const _en = <String, String>{
   'joinLeague': 'Join',
   'newLeague': 'New League',
   'joinLeagueBtn': 'Join League',
+  'syncingCalendar': 'Syncing Google Calendar…',
+  'syncingCalendarSub':
+      'Connecting your tasks to Google Calendar.\nThis only takes a moment.',
   'fighters': 'fighters',
   'fighter': 'fighter',
   'language': 'Language',
@@ -44,7 +47,8 @@ const _en = <String, String>{
   'monthlyCompetition': 'Monthly Competition',
   'inviteCode': 'Invite Code',
   'inviteToLeague': 'Invite to League',
-  'inviteShareText': 'Share this code with friends so they can join your league:',
+  'inviteShareText':
+      'Share this code with friends so they can join your league:',
   'copyCode': 'Copy Code',
   'inviteCopied': 'Invite code copied!',
 
@@ -53,9 +57,19 @@ const _en = <String, String>{
   'leagueTasks': 'League Tasks',
   'newTask': 'New Task',
   'upcoming': 'Upcoming',
+  'upcomingTasks': 'Upcoming tasks',
+  'previewToday': 'Today',
+  'previewTomorrow': 'Tomorrow',
+  'previewOverdueDays': 'Overdue {days}d',
+  'previewInDays': 'In {days}d',
+  'previewOverdueCount': '{count} overdue',
+  'previewTodayCount': '{count} today',
+  'goToTasks': 'Go to Tasks →',
+  'seeAllTasks': 'See all {count} tasks →',
   'recurring': 'Recurring',
   'noTasksAssigned': 'No tasks assigned to you yet.',
-  'noTasksAssignedSub': 'Assign a league task to yourself\nor ask someone to assign one.',
+  'noTasksAssignedSub':
+      'Assign a league task to yourself\nor ask someone to assign one.',
   'noTasksForDay': 'No tasks scheduled for this day.',
   'noTasksMatch': 'No tasks match your filters.',
   'noTasksMatchSub': 'Try adjusting the filters.',
@@ -89,6 +103,11 @@ const _en = <String, String>{
   'reminder': 'Reminder',
   'saveChanges': 'Save changes',
   'deleteTask': 'Delete task',
+  'viewList': 'List',
+  'viewCalendar': 'Calendar',
+  'switchView': 'Switch view',
+  'calendarWeek': 'Week',
+  'calendarMonth': 'Month',
   'deleteTaskConfirm': 'Delete "{title}"? This cannot be undone.',
   'taskDeleted': '🗑️ "{title}" deleted',
   'taskMoved': '✅ "{title}" moved to My Tasks',
@@ -138,12 +157,14 @@ const _en = <String, String>{
   'thisOccurrence': 'This occurrence · -1 HP · +🪙1 coin',
   'dealsEarns': 'Deals 1 HP damage · Earns 🪙1 coin',
   'chooseTarget': 'Choose a target (optional):',
-  'noOtherMembers': 'No other members in this league yet. Invite someone to attack!',
+  'noOtherMembers':
+      'No other members in this league yet. Invite someone to attack!',
   'confirmAttack': 'Confirm & Attack!',
   'doneOccurrence': 'Done for this occurrence!',
   'skipOccurrence': 'Skip this time (nobody did it)',
   'skipOccurrenceTitle': 'Skip this occurrence?',
-  'skipOccurrenceMessage': 'This moves "{title}" to the next date without anyone completing it. No coins, no damage, no history.',
+  'skipOccurrenceMessage':
+      'This moves "{title}" to the next date without anyone completing it. No coins, no damage, no history.',
   'skipConfirm': 'Skip',
   'skippedToast': 'Skipped - moved to the next date',
 
@@ -162,8 +183,10 @@ const _en = <String, String>{
   // Leave league
   'leaveLeague': 'Leave League',
   'leaveLeagueConfirmTitle': 'Leave league?',
-  'leaveLeagueConfirmBody': 'You will be removed from "{name}". You can rejoin with the invite code.',
-  'leaveLeagueOwnerError': 'The league owner cannot leave. Transfer ownership first.',
+  'leaveLeagueConfirmBody':
+      'You will be removed from "{name}". You can rejoin with the invite code.',
+  'leaveLeagueOwnerError':
+      'The league owner cannot leave. Transfer ownership first.',
   'leaveLeagueSuccess': 'You have left "{name}".',
   'leaveLeagueError': 'Could not leave the league. Try again.',
 
@@ -185,19 +208,22 @@ const _en = <String, String>{
   'attacksLeft': '{n} attacks left today',
   'attacksExhausted': 'No attacks left today',
   'attacksLeftFull': 'All {max} attacks available',
-  'attackCapReached': '⚠️ You\'ve used all {max} attacks for today. Come back tomorrow!',
+  'attackCapReached':
+      '⚠️ You\'ve used all {max} attacks for today. Come back tomorrow!',
 
   // Arena attack flow
   'attackFighter': 'Attack {name}',
   'selectTaskToAttack': 'Choose a task to complete and attack with:',
   'noTasksToAttack': 'No tasks available',
-  'noTasksToAttackSub': 'You have no tasks assigned. Go to the Tasks screen to assign one first.',
+  'noTasksToAttackSub':
+      'You have no tasks assigned. Go to the Tasks screen to assign one first.',
   'attackWith': 'Attack with this task',
   'arenaAttackSuccess': '✅ +🪙1 coin\n💥 -{dmg} HP to {name}',
   'whoDidIt': 'Who did it?',
   'youTag': 'You',
   'whoToAttack': 'Who do you want to attack?',
-  'selectOpponentOrComplete': 'Select an opponent or complete without attacking.',
+  'selectOpponentOrComplete':
+      'Select an opponent or complete without attacking.',
   'noAttacksLeftEarnCoins': 'No attacks left today - you can still earn coins.',
   'allKoComplete': 'All opponents are K.O.! Complete to earn coins.',
   'noOneJustEarn': 'No one - just earn coins & XP',
@@ -231,22 +257,28 @@ const _en = <String, String>{
   'periodSince': '{label} · since {date}',
   'periodResultsLastWeek': 'Last week\'s results',
   'periodResultsLastMonth': 'Last month\'s results',
-  'shieldBlockedMsg': '🛡️ {name} has a shield active for {time} — your attack will be blocked!',
+  'shieldBlockedMsg':
+      '🛡️ {name} has a shield active for {time} — your attack will be blocked!',
   'attackAnyway': 'Attack anyway',
   'otherFighters': 'OTHER FIGHTERS',
   'attackBadge': 'ATTACK',
   'completeBadge': 'COMPLETE',
   'buyShieldShort': 'Buy shield',
   'buyShieldTitle': 'Buy a Shield',
-  'buyShieldDesc': 'Protect yourself from attacks for a limited time.\nYou have 🪙{coins} coins.',
+  'buyShieldDesc':
+      'Protect yourself from attacks for a limited time.\nYou have 🪙{coins} coins.',
   'shieldActiveFor': '🛡️ Shield active for {duration}!',
   'notEnoughCoins': 'Not enough coins.',
   'noAttacksComeBack': 'No attacks left today — come back tomorrow!',
-  'attackHintTap': 'Tap the opponent or press ATTACK, then pick a task to complete.',
-  'allKoKeepEarning': 'All opponents K.O.! Complete tasks to keep earning coins & XP.',
+  'attackHintTap':
+      'Tap the opponent or press ATTACK, then pick a task to complete.',
+  'allKoKeepEarning':
+      'All opponents K.O.! Complete tasks to keep earning coins & XP.',
   'allKoTitle': 'All opponents are K.O.!',
-  'allKoSubtitle': 'Complete a task to earn coins & XP.\nNo damage will be dealt.',
-  'completeWithoutAttacking': 'Complete a task without attacking (earn coins only)',
+  'allKoSubtitle':
+      'Complete a task to earn coins & XP.\nNo damage will be dealt.',
+  'completeWithoutAttacking':
+      'Complete a task without attacking (earn coins only)',
   'continueBtn': 'Continue',
   'preparing': 'Preparing...',
   'completing': 'Completing...',
@@ -265,6 +297,7 @@ const _en = <String, String>{
       'For security, please sign out and sign in again before deleting your account.',
   'deleteAccountError': 'Could not delete your account. Please try again.',
   'chooseFighter': 'Choose your fighter',
+  'unlockFightersWithCoins': 'Unlock new fighters with 🪙 coins',
   'profileCoins': 'coins',
   'profileToday': 'today',
   'watchAdForCoins': 'Watch ad +{coins} coins ({left} left)',
@@ -320,12 +353,14 @@ const _en = <String, String>{
 
   // Quota / free-plan limit alert
   'quotaAlertTitle': 'Service temporarily unavailable',
-  'quotaAlertMessage': 'The app reached its daily usage limit. Some actions cannot be completed right now. Please contact the administrator - quota limit exceeded.',
+  'quotaAlertMessage':
+      'The app reached its daily usage limit. Some actions cannot be completed right now. Please contact the administrator - quota limit exceeded.',
   'quotaAlertButton': 'OK',
 
   // Maintenance mode
   'maintenanceTitle': 'We will be right back',
-  'maintenanceMessage': 'We are applying some updates to improve your experience. Please check back in a little while.',
+  'maintenanceMessage':
+      'We are applying some updates to improve your experience. Please check back in a little while.',
   'maintenanceHint': 'Thanks for your patience.',
 };
 
@@ -349,6 +384,9 @@ const _es = <String, String>{
   'joinLeague': 'Unirse',
   'newLeague': 'Nueva liga',
   'joinLeagueBtn': 'Unirse a liga',
+  'syncingCalendar': 'Sincronizando Google Calendar…',
+  'syncingCalendarSub':
+      'Conectando tus tareas con Google Calendar.\nSolo tomará un momento.',
   'fighters': 'luchadores',
   'fighter': 'luchador',
   'language': 'Idioma',
@@ -363,7 +401,8 @@ const _es = <String, String>{
   'monthlyCompetition': 'Competición mensual',
   'inviteCode': 'Código de invitación',
   'inviteToLeague': 'Invitar a la liga',
-  'inviteShareText': 'Comparte este código con amigos para que se unan a tu liga:',
+  'inviteShareText':
+      'Comparte este código con amigos para que se unan a tu liga:',
   'copyCode': 'Copiar código',
   'inviteCopied': '¡Código copiado!',
 
@@ -372,9 +411,19 @@ const _es = <String, String>{
   'leagueTasks': 'Tareas de la liga',
   'newTask': 'Nueva tarea',
   'upcoming': 'Próximas',
+  'upcomingTasks': 'Próximas tareas',
+  'previewToday': 'Hoy',
+  'previewTomorrow': 'Mañana',
+  'previewOverdueDays': 'Vencida hace {days}d',
+  'previewInDays': 'En {days}d',
+  'previewOverdueCount': '{count} vencidas',
+  'previewTodayCount': '{count} hoy',
+  'goToTasks': 'Ir a Tareas →',
+  'seeAllTasks': 'Ver las {count} tareas →',
   'recurring': 'Recurrentes',
   'noTasksAssigned': 'Aún no tienes tareas asignadas.',
-  'noTasksAssignedSub': 'Asígnate una tarea de la liga\no pide a alguien que te asigne una.',
+  'noTasksAssignedSub':
+      'Asígnate una tarea de la liga\no pide a alguien que te asigne una.',
   'noTasksForDay': 'No hay tareas programadas para este día.',
   'noTasksMatch': 'Ninguna tarea coincide con los filtros.',
   'noTasksMatchSub': 'Prueba a ajustar los filtros.',
@@ -408,6 +457,11 @@ const _es = <String, String>{
   'reminder': 'Recordatorio',
   'saveChanges': 'Guardar cambios',
   'deleteTask': 'Eliminar tarea',
+  'viewList': 'Lista',
+  'viewCalendar': 'Calendario',
+  'switchView': 'Cambiar vista',
+  'calendarWeek': 'Semana',
+  'calendarMonth': 'Mes',
   'deleteTaskConfirm': '¿Eliminar "{title}"? Esta acción no se puede deshacer.',
   'taskDeleted': '🗑️ "{title}" eliminada',
   'taskMoved': '✅ "{title}" movida a Mis tareas',
@@ -461,7 +515,8 @@ const _es = <String, String>{
   'doneOccurrence': '¡Hecho para esta vez!',
   'skipOccurrence': 'Saltar esta vez (nadie la hizo)',
   'skipOccurrenceTitle': '¿Saltar esta vez?',
-  'skipOccurrenceMessage': 'Esto mueve "{title}" a la siguiente fecha sin que nadie la complete. Sin monedas, sin daño, sin historial.',
+  'skipOccurrenceMessage':
+      'Esto mueve "{title}" a la siguiente fecha sin que nadie la complete. Sin monedas, sin daño, sin historial.',
   'skipConfirm': 'Saltar',
   'skippedToast': 'Saltada - movida a la siguiente fecha',
 
@@ -480,7 +535,8 @@ const _es = <String, String>{
   // Leave league
   'leaveLeague': 'Abandonar liga',
   'leaveLeagueConfirmTitle': '¿Abandonar la liga?',
-  'leaveLeagueConfirmBody': 'Serás eliminado de "{name}". Puedes volver a unirte con el código de invitación.',
+  'leaveLeagueConfirmBody':
+      'Serás eliminado de "{name}". Puedes volver a unirte con el código de invitación.',
   'leaveLeagueOwnerError': 'El propietario no puede abandonar la liga.',
   'leaveLeagueSuccess': 'Has abandonado "{name}".',
   'leaveLeagueError': 'No se pudo abandonar la liga. Inténtalo de nuevo.',
@@ -509,7 +565,8 @@ const _es = <String, String>{
   'attackFighter': 'Atacar a {name}',
   'selectTaskToAttack': 'Elige una tarea para completar y atacar:',
   'noTasksToAttack': 'Sin tareas disponibles',
-  'noTasksToAttackSub': 'No tienes tareas asignadas. Ve a Tareas para asignarte una primero.',
+  'noTasksToAttackSub':
+      'No tienes tareas asignadas. Ve a Tareas para asignarte una primero.',
   'attackWith': 'Atacar con esta tarea',
   'arenaAttackSuccess': '✅ +🪙1 moneda\n💥 -{dmg} PV a {name}',
   'whoDidIt': '¿Quién la hizo?',
@@ -517,7 +574,8 @@ const _es = <String, String>{
   'whoToAttack': '¿A quién quieres atacar?',
   'selectOpponentOrComplete': 'Elige un rival o completa sin atacar.',
   'noAttacksLeftEarnCoins': 'Sin ataques hoy - aún puedes ganar monedas.',
-  'allKoComplete': '¡Todos los rivales están K.O.! Completa para ganar monedas.',
+  'allKoComplete':
+      '¡Todos los rivales están K.O.! Completa para ganar monedas.',
   'noOneJustEarn': 'Nadie - solo gana monedas y XP',
   'completeNoDamage': 'Completa la tarea sin causar daño',
   'creditsOnlyFor': 'Dar el mérito a {name} (solo monedas y XP)',
@@ -549,22 +607,28 @@ const _es = <String, String>{
   'periodSince': '{label} · desde {date}',
   'periodResultsLastWeek': 'Resultados de la semana pasada',
   'periodResultsLastMonth': 'Resultados del mes pasado',
-  'shieldBlockedMsg': '🛡️ {name} tiene un escudo activo durante {time} — ¡tu ataque será bloqueado!',
+  'shieldBlockedMsg':
+      '🛡️ {name} tiene un escudo activo durante {time} — ¡tu ataque será bloqueado!',
   'attackAnyway': 'Atacar igualmente',
   'otherFighters': 'OTROS LUCHADORES',
   'attackBadge': 'ATACAR',
   'completeBadge': 'COMPLETAR',
   'buyShieldShort': 'Comprar escudo',
   'buyShieldTitle': 'Comprar un escudo',
-  'buyShieldDesc': 'Protégete de los ataques durante un tiempo limitado.\nTienes 🪙{coins} monedas.',
+  'buyShieldDesc':
+      'Protégete de los ataques durante un tiempo limitado.\nTienes 🪙{coins} monedas.',
   'shieldActiveFor': '🛡️ ¡Escudo activo durante {duration}!',
   'notEnoughCoins': 'Monedas insuficientes.',
   'noAttacksComeBack': 'Sin ataques hoy — ¡vuelve mañana!',
-  'attackHintTap': 'Toca al rival o pulsa ATACAR, luego elige una tarea para completar.',
-  'allKoKeepEarning': '¡Todos los rivales K.O.! Completa tareas para seguir ganando monedas y XP.',
+  'attackHintTap':
+      'Toca al rival o pulsa ATACAR, luego elige una tarea para completar.',
+  'allKoKeepEarning':
+      '¡Todos los rivales K.O.! Completa tareas para seguir ganando monedas y XP.',
   'allKoTitle': '¡Todos los rivales están K.O.!',
-  'allKoSubtitle': 'Completa una tarea para ganar monedas y XP.\nNo se causará daño.',
-  'completeWithoutAttacking': 'Completa una tarea sin atacar (solo ganas monedas)',
+  'allKoSubtitle':
+      'Completa una tarea para ganar monedas y XP.\nNo se causará daño.',
+  'completeWithoutAttacking':
+      'Completa una tarea sin atacar (solo ganas monedas)',
   'continueBtn': 'Continuar',
   'preparing': 'Preparando...',
   'completing': 'Completando...',
@@ -583,11 +647,13 @@ const _es = <String, String>{
       'Por seguridad, cierra sesión y vuelve a iniciar sesión antes de eliminar tu cuenta.',
   'deleteAccountError': 'No se pudo eliminar tu cuenta. Inténtalo de nuevo.',
   'chooseFighter': 'Elige tu luchador',
+  'unlockFightersWithCoins': 'Desbloquea nuevos luchadores con 🪙 monedas',
   'profileCoins': 'monedas',
   'profileToday': 'hoy',
   'watchAdForCoins': 'Ver anuncio +{coins} monedas ({left} rest.)',
   'watchAdCapReached': 'No hay más recompensas hoy',
-  'watchAdNotReady': 'No hay anuncio disponible ahora - inténtalo en un momento.',
+  'watchAdNotReady':
+      'No hay anuncio disponible ahora - inténtalo en un momento.',
   'watchAdRewarded': '¡+{coins} monedas conseguidas!',
 
   // Statistics
@@ -626,7 +692,8 @@ const _es = <String, String>{
   'enterName': 'Escribe tu nombre',
   'enterValidEmail': 'Escribe un correo válido',
   'minChars': 'Mínimo 6 caracteres',
-  'enterEmailFirst': 'Introduce tu correo primero para restablecer la contraseña.',
+  'enterEmailFirst':
+      'Introduce tu correo primero para restablecer la contraseña.',
   'passwordResetSent': '✅ ¡Correo de restablecimiento enviado!',
   'errUserNotFound': 'No se encontró ninguna cuenta con este correo.',
   'errWrongPassword': 'Contraseña incorrecta.',
@@ -638,12 +705,14 @@ const _es = <String, String>{
 
   // Quota / free-plan limit alert
   'quotaAlertTitle': 'Servicio no disponible temporalmente',
-  'quotaAlertMessage': 'La app alcanzó su límite de uso diario. Algunas acciones no se pueden completar ahora mismo. Contacta al administrador - se superó el límite de cuota.',
+  'quotaAlertMessage':
+      'La app alcanzó su límite de uso diario. Algunas acciones no se pueden completar ahora mismo. Contacta al administrador - se superó el límite de cuota.',
   'quotaAlertButton': 'Entendido',
 
   // Maintenance mode
   'maintenanceTitle': 'Volvemos enseguida',
-  'maintenanceMessage': 'Estamos aplicando algunas actualizaciones para mejorar tu experiencia. Vuelve a intentarlo en un momento.',
+  'maintenanceMessage':
+      'Estamos aplicando algunas actualizaciones para mejorar tu experiencia. Vuelve a intentarlo en un momento.',
   'maintenanceHint': 'Gracias por tu paciencia.',
 };
 
@@ -673,15 +742,18 @@ class AppLocalizations {
   }
 }
 
-class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
+class _AppLocalizationsDelegate
+    extends LocalizationsDelegate<AppLocalizations> {
   const _AppLocalizationsDelegate();
 
   @override
-  bool isSupported(Locale locale) =>
-      kSupportedLocales.map((l) => l.languageCode).contains(locale.languageCode);
+  bool isSupported(Locale locale) => kSupportedLocales
+      .map((l) => l.languageCode)
+      .contains(locale.languageCode);
 
   @override
-  Future<AppLocalizations> load(Locale locale) async => AppLocalizations(locale);
+  Future<AppLocalizations> load(Locale locale) async =>
+      AppLocalizations(locale);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;

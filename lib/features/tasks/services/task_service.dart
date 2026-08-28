@@ -18,10 +18,10 @@ class TaskService {
     TaskRepository? taskRepo,
     TaskEventRepository? eventRepo,
     GoogleCalendarService? calendarService,
-  })  : _userRepo = userRepo ?? UserRepository(),
-        _taskRepo = taskRepo ?? TaskRepository(),
-        _eventRepo = eventRepo ?? TaskEventRepository(),
-        _calendarService = calendarService ?? GoogleCalendarService();
+  }) : _userRepo = userRepo ?? UserRepository(),
+       _taskRepo = taskRepo ?? TaskRepository(),
+       _eventRepo = eventRepo ?? TaskEventRepository(),
+       _calendarService = calendarService ?? GoogleCalendarService();
 
   /// Complete a task → coins + damage + history.
   /// - One-time tasks: deleted after completion.
@@ -39,7 +39,8 @@ class TaskService {
     // Check if doer is KO'd in this league
     final doer = await _userRepo.getUser(doerId);
     final maxHp = maxHpForType(leagueType);
-    final isKO = doer != null && doer.currentHp(task.leagueId, maxHp: maxHp) <= 0;
+    final isKO =
+        doer != null && doer.currentHp(task.leagueId, maxHp: maxHp) <= 0;
 
     // 1. Award 1 coin to doer — skipped if KO'd
     final coinsEarned = isKO ? 0 : await _userRepo.addCoins(doerId);
@@ -57,17 +58,19 @@ class TaskService {
     }
 
     // 3. Record history event
-    final event = await _eventRepo.recordEvent(TaskEventModel(
-      id: '',
-      leagueId: task.leagueId,
-      taskId: task.id,
-      taskTitle: task.title,
-      doerId: doerId,
-      targetId: targetId,
-      damageDealt: damageDealt,
-      coinsEarned: coinsEarned,
-      completedAt: DateTime.now(),
-    ));
+    final event = await _eventRepo.recordEvent(
+      TaskEventModel(
+        id: '',
+        leagueId: task.leagueId,
+        taskId: task.id,
+        taskTitle: task.title,
+        doerId: doerId,
+        targetId: targetId,
+        damageDealt: damageDealt,
+        coinsEarned: coinsEarned,
+        completedAt: DateTime.now(),
+      ),
+    );
 
     // 4. Delete if one-time; advance date if recurring
     if (task.repeat == TaskRepeat.none) {
@@ -106,7 +109,14 @@ class TaskService {
       case TaskRepeat.weekly:
         return d.add(const Duration(days: 7));
       case TaskRepeat.monthly:
-        return DateTime(d.year, d.month + 1, d.day, d.hour, d.minute);
+        // Advance one month, clamping the day to the last valid day of the
+        // target month so a task on the 29/30/31 doesn't overflow into the
+        // following month (e.g. Jan 31 → Feb 28/29, not March 3).
+        final targetYear = d.month == 12 ? d.year + 1 : d.year;
+        final targetMonth = d.month == 12 ? 1 : d.month + 1;
+        final lastDayOfTarget = DateTime(targetYear, targetMonth + 1, 0).day;
+        final day = d.day < lastDayOfTarget ? d.day : lastDayOfTarget;
+        return DateTime(targetYear, targetMonth, day, d.hour, d.minute);
       case TaskRepeat.none:
         return d;
     }
@@ -191,12 +201,12 @@ class TaskService {
       title: recurringTask.title,
       description: recurringTask.description,
       effort: recurringTask.effort,
-      repeat: TaskRepeat.none,         // fixed, one-time
+      repeat: TaskRepeat.none, // fixed, one-time
       scheduledAt: isDue ? null : occurrenceDate,
       dueDate: isDue ? occurrenceDate : null,
       reminderMinutesBefore: recurringTask.reminderMinutesBefore,
       addToCalendar: recurringTask.addToCalendar,
-      parentTaskId: recurringTask.id,  // link back to template
+      parentTaskId: recurringTask.id, // link back to template
     );
 
     final created = await _taskRepo.createTask(subtask);
@@ -282,7 +292,11 @@ class TaskService {
           final effectiveDate = task.dueDate ?? task.scheduledAt;
           if (effectiveDate == null) continue;
           // Skip tasks from previous days (tasks due today are still valid)
-          final today = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+          final today = DateTime(
+            DateTime.now().year,
+            DateTime.now().month,
+            DateTime.now().day,
+          );
           if (effectiveDate.isBefore(today)) continue;
 
           try {
@@ -294,9 +308,7 @@ class TaskService {
               reminderMinutesBefore: task.reminderMinutesBefore ?? 30,
             );
             if (eventId != null) {
-              await _taskRepo.updateTask(
-                task.copyWith(googleEventId: eventId),
-              );
+              await _taskRepo.updateTask(task.copyWith(googleEventId: eventId));
               synced++;
             }
           } catch (_) {}
