@@ -2882,10 +2882,12 @@ Future<void> showArenaAttackDialog(
       allLeagueTasks.where((t) => t.assigneeId == currentUid).toList()
         ..sort((a, b) {
           // One-time tasks first, then recurring
-          if (a.repeat == TaskRepeat.none && b.repeat != TaskRepeat.none)
+          if (a.repeat == TaskRepeat.none && b.repeat != TaskRepeat.none) {
             return -1;
-          if (a.repeat != TaskRepeat.none && b.repeat == TaskRepeat.none)
+          }
+          if (a.repeat != TaskRepeat.none && b.repeat == TaskRepeat.none) {
             return 1;
+          }
           return 0;
         });
 

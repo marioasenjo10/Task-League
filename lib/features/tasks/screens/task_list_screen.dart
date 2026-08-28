@@ -12,9 +12,7 @@ import '../../league/providers/league_providers.dart';
 import '../../league/models/league_model.dart';
 import '../../league/screens/members_screen.dart' show leagueMembersProvider;
 import '../../arena/screens/arena_screen.dart' show showArenaAttackDialogWithTask;
-import '../../../core/widgets/fighter_sprite.dart';
 import '../../../core/l10n/app_localizations.dart';
-import '../../../core/services/quota_guard.dart';
 
 // Shared reminder options (used in create + edit sheets) — keys are l10n keys
 const _reminderOptions = <String, int?>{
