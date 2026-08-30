@@ -1052,70 +1052,27 @@ class _ArenaLayoutState extends ConsumerState<_ArenaLayout> {
                     },
                   ),
                 ),
+
+              // Keep the attack action visible in the first viewport.
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: _AttackHintBar(
+                  attacksLeft: myAttacksLeft,
+                  opponentIsAlive: opponentIsAlive,
+                  onAttackTap: myAttacksLeft > 0
+                      ? () {
+                          if (opponentIsAlive) {
+                            _onFighterTap(opponent);
+                          } else {
+                            _onCompleteNoTarget();
+                          }
+                        }
+                      : null,
+                ),
+              ),
             ],
-          ),
-
-          // ── Bench — remaining opponents (excluding current ring opponent) ─
-          if (opponents.length > 1) ...[
-            const SizedBox(height: 10),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  Container(
-                    width: 3,
-                    height: 14,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF6C3CE1),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    context.tr('otherFighters'),
-                    style: const TextStyle(
-                      color: Colors.white38,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.5,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                children: [
-                  for (int i = 0; i < opponents.length; i++)
-                    if (i != _opponentIndex)
-                      _BenchRow(
-                        user: opponents[i],
-                        rank: i + 2,
-                        isCurrentUser: false,
-                        leagueId: widget.leagueId,
-                        maxHp: widget.maxHp,
-                        onTap: () => setState(() => _opponentIndex = i),
-                      ),
-                ],
-              ),
-            ),
-          ],
-
-          // ── Attack CTA / hint bar ────────────────────────────────────────
-          _AttackHintBar(
-            attacksLeft: myAttacksLeft,
-            opponentIsAlive: opponentIsAlive,
-            onAttackTap: myAttacksLeft > 0
-                ? () {
-                    if (opponentIsAlive) {
-                      _onFighterTap(opponent);
-                    } else {
-                      _onCompleteNoTarget();
-                    }
-                  }
-                : null,
           ),
 
           // ── Legend ───────────────────────────────────────────────────────
@@ -1258,7 +1215,7 @@ class _RingWithFighters extends StatelessWidget {
               // ── Left fighter ───────────────────────────────────────────
               if (left != null)
                 Positioned(
-                  left: w * 0.20,
+                  left: w * 0.14,
                   // Subtract the transparent footer so the visible feet land on the floor
                   bottom:
                       floorPad -
@@ -1290,7 +1247,7 @@ class _RingWithFighters extends StatelessWidget {
               // ── Right fighter ──────────────────────────────────────────
               if (right != null)
                 Positioned(
-                  right: w * 0.20,
+                  right: w * 0.14,
                   bottom:
                       floorPad -
                       FighterSprite(
@@ -1534,6 +1491,16 @@ class _FighterSlotState extends State<_FighterSlot>
     final user = widget.user;
     final isKO = user.currentHp(widget.leagueId, maxHp: widget.maxHp) <= 0;
     final s = widget.size;
+    final spriteSize = user.characterSkin == 'masked_woman'
+      ? s * 0.80 : user.characterSkin == 'thunderman' ? s * 0.90 : 
+      user.characterSkin == 'ninja' ? s * 0.90 : 
+      user.characterSkin == 'masked_fighter' ? s * 0.80 : s;
+    final spriteOffsetY = user.characterSkin == 'warrior'
+      ? 8.0 : user.characterSkin == 'masked_woman' ? -8.0 : 0.0;
+    final hpBarOffsetY = user.characterSkin == 'viking'
+      ? -FighterSprite(skin: user.characterSkin, size: spriteSize)
+            .feetPaddingPixels(spriteSize)
+      : 0.0;
 
     return AnimatedBuilder(
       animation: Listenable.merge([_hitCtrl, _idleCtrl]),
@@ -1572,41 +1539,21 @@ class _FighterSlotState extends State<_FighterSlot>
                   child: Stack(
                     alignment: Alignment.bottomCenter,
                     children: [
-                      // ── Ground shadow ellipse — pulses with the bob ──────────
-                      Positioned(
-                        // Offset the shadow up by the PNG's transparent footer
-                        // so it always sits under the visible feet, not the SizedBox edge.
-                        bottom:
-                            2 +
-                            FighterSprite(
-                              skin: user.characterSkin,
-                              size: s,
-                            ).feetPaddingPixels(s),
-                        child: Container(
-                          // shadow shrinks slightly when fighter bobs up
-                          width:
-                              s *
-                              0.6 *
-                              (1.0 - idleBobY * 0.015).clamp(0.85, 1.0),
-                          height: 10,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(50),
-                            color: Colors.black.withAlpha(80),
-                          ),
-                        ),
-                      ),
                       // ── Sprite ──────────────────────────────────────────────
-                      Opacity(
-                        opacity: isKO ? 0.35 : 1.0,
-                        child: Transform.scale(
-                          scaleX: widget.facingRight ? 1.0 : -1.0,
-                          child: FighterSprite(
-                            skin: user.characterSkin,
-                            size: s,
-                            isKO: isKO,
-                            pose: _isHitPose
-                                ? FighterPose.hit
-                                : FighterPose.idle,
+                      Transform.translate(
+                        offset: Offset(0, spriteOffsetY),
+                        child: Opacity(
+                          opacity: isKO ? 0.35 : 1.0,
+                          child: Transform.scale(
+                            scaleX: widget.facingRight ? 1.0 : -1.0,
+                            child: FighterSprite(
+                              skin: user.characterSkin,
+                              size: spriteSize,
+                              isKO: isKO,
+                              pose: _isHitPose
+                                  ? FighterPose.hit
+                                  : FighterPose.idle,
+                            ),
                           ),
                         ),
                       ),
@@ -1615,8 +1562,8 @@ class _FighterSlotState extends State<_FighterSlot>
                       if (_showHitEffect)
                         IgnorePointer(
                           child: Container(
-                            width: s,
-                            height: s,
+                            width: spriteSize,
+                            height: spriteSize,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               color: Color.fromARGB(tintAlpha, 255, 50, 50),
@@ -1721,221 +1668,21 @@ class _FighterSlotState extends State<_FighterSlot>
                   ),
                 ),
                 // ── HP bar below sprite ──────────────────────────────────
-                _InlineHpBar(
-                  user: user,
-                  leagueId: widget.leagueId,
-                  maxHp: widget.maxHp,
-                  width: s,
-                  isCurrentUser: widget.isCurrentUser,
+                Transform.translate(
+                  offset: Offset(0, hpBarOffsetY),
+                  child: _InlineHpBar(
+                    user: user,
+                    leagueId: widget.leagueId,
+                    maxHp: widget.maxHp,
+                    width: s,
+                    isCurrentUser: widget.isCurrentUser,
+                  ),
                 ),
               ],
             ), // Column
           ), // Transform.rotate
         ); // Transform.translate
       },
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Bench row — compact fighter card for members not in the ring
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _BenchRow extends StatelessWidget {
-  final UserModel user;
-  final int rank;
-  final bool isCurrentUser;
-  final String leagueId;
-  final int maxHp;
-  final VoidCallback? onTap;
-
-  const _BenchRow({
-    required this.user,
-    required this.rank,
-    required this.isCurrentUser,
-    required this.leagueId,
-    required this.maxHp,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final hp = user.currentHp(leagueId, maxHp: maxHp);
-    final hpRatio = maxHp > 0 ? (hp / maxHp).clamp(0.0, 1.0) : 0.0;
-    final hpColor = hpRatio > 0.6
-        ? const Color(0xFF4CAF50)
-        : hpRatio > 0.3
-        ? const Color(0xFFFFC107)
-        : const Color(0xFFE53935);
-    final isKO = hp <= 0;
-    final canAttack = onTap != null && !isCurrentUser && !isKO;
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(10),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(10),
-          onTap: canAttack ? onTap : null,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white.withAlpha(isCurrentUser ? 18 : 10),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: isCurrentUser
-                    ? const Color(0xFF6C3CE1).withAlpha(120)
-                    : Colors.white.withAlpha(15),
-                width: 1,
-              ),
-            ),
-            child: Row(
-              children: [
-                // Rank number
-                SizedBox(
-                  width: 22,
-                  child: Text(
-                    '#$rank',
-                    style: const TextStyle(
-                      color: Colors.white38,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                // Fighter sprite thumbnail
-                SizedBox(
-                  width: 40,
-                  height: 40,
-                  child: Opacity(
-                    opacity: isKO ? 0.35 : 1.0,
-                    child: FighterSprite(
-                      skin: user.characterSkin,
-                      size: 40,
-                      isKO: isKO,
-                      pose: FighterPose.idle,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                // Name + YOU badge + HP bar
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          if (isCurrentUser)
-                            Container(
-                              margin: const EdgeInsets.only(right: 4),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 4,
-                                vertical: 1,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF6C3CE1).withAlpha(120),
-                                borderRadius: BorderRadius.circular(3),
-                              ),
-                              child: const Text(
-                                'YOU',
-                                style: TextStyle(
-                                  color: Color(0xFFB39DDB),
-                                  fontSize: 8,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 1,
-                                ),
-                              ),
-                            ),
-                          Flexible(
-                            child: Text(
-                              user.name.isNotEmpty ? user.name : user.email,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      // HP bar
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(3),
-                        child: LinearProgressIndicator(
-                          value: hpRatio,
-                          minHeight: 5,
-                          backgroundColor: Colors.white10,
-                          valueColor: AlwaysStoppedAnimation<Color>(hpColor),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 10),
-                // HP + coins + attack button
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      '$hp/$maxHp',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: hpColor,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '🪙${user.coins}',
-                      style: const TextStyle(
-                        fontSize: 10,
-                        color: Colors.white38,
-                      ),
-                    ),
-                    if (canAttack) ...[
-                      const SizedBox(height: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 7,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE53935).withAlpha(180),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.bolt,
-                              size: 11,
-                              color: Colors.white,
-                            ),
-                            const SizedBox(width: 3),
-                            Text(
-                              context.tr('attackBadge'),
-                              style: const TextStyle(
-                                fontSize: 9,
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 }
