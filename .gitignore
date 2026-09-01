@@ -4,6 +4,7 @@
 *.pyc
 *.swp
 .DS_Store
+.firebase/
 .atom/
 .build/
 .buildlog/
@@ -53,8 +54,7 @@ app.*.map.json
 # ios/Runner/GoogleService-Info.plist ← included (private repo)
 # lib/firebase_options.dart           ← included (private repo)
 
-# Keystore credentials — TEMPORARILY included for transfer between machines.
-# TODO: remove from repo once copied to home PC, then re-add these lines:
-# android/key.properties
-# android/upload-keystore.jks
-# android/upload-keystore.jks.old
+# Android signing secrets — never commit these files.
+android/key.properties
+android/upload-keystore.jks
+android/upload-keystore.jks.old

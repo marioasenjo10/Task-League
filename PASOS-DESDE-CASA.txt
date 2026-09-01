@@ -1,7 +1,7 @@
 ========================================================================
   TASK LEAGUE — PASOS PARA COMPILAR Y PUBLICAR DESDE CASA
   (Este PC del trabajo NO puede compilar Android. Todo esto se hace en casa.)
-  Ultima actualizacion: 28/08/2026
+      Ultima actualizacion: 01/09/2026
 ========================================================================
 
 ------------------------------------------------------------------------
@@ -18,6 +18,11 @@
 ------------------------------------------------------------------------
 1. TRAER EL CODIGO ACTUALIZADO (Git)
 ------------------------------------------------------------------------
+ANTES DEL git pull: si ya tienes android/upload-keystore.jks o
+android/key.properties en el PC de casa, copialos temporalmente FUERA de la
+carpeta del repositorio. La siguiente actualizacion deja de versionarlos y Git
+podria eliminar las copias que estaban rastreadas.
+
 Abrir terminal en la carpeta del proyecto y ejecutar:
 
       git pull origin master
@@ -28,6 +33,25 @@ config de dominio, etc.
 ------------------------------------------------------------------------
 2. COLOCAR EL KEYSTORE (¡IMPORTANTE! No viaja por Git)
 ------------------------------------------------------------------------
+SEGURIDAD: el keystore y key.properties estuvieron versionados anteriormente.
+Antes de la primera subida a Google Play, crea un keystore de upload nuevo con
+una contraseña nueva y privada, actualiza android/key.properties localmente y
+guarda una copia segura. No reutilices la contraseña antigua. Al ser la primera
+publicacion, todavia puedes sustituir la clave de upload sin migraciones.
+
+Generar el keystore nuevo desde la raiz del proyecto (las contraseñas se
+introducen de forma interactiva y NO deben copiarse en Git):
+
+      keytool -genkeypair -v -keystore android/upload-keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+
+Crear despues android/key.properties con estas cuatro propiedades y sustituir
+los textos entre <...> por los valores privados:
+
+      storePassword=<CONTRASENA_NUEVA>
+      keyPassword=<CONTRASENA_NUEVA>
+      keyAlias=upload
+      storeFile=../upload-keystore.jks
+
 El archivo de firma "upload-keystore.jks" esta en .gitignore, asi que
 NO se descarga con git pull. Tienes que tenerlo fisicamente en el PC de
 casa, en esta ruta EXACTA dentro del proyecto:
@@ -35,18 +59,14 @@ casa, en esta ruta EXACTA dentro del proyecto:
       android/upload-keystore.jks
 
 Si no lo tienes en casa, copialo desde donde lo guardaste (USB, nube
-privada, etc.). Datos de la firma (ya configurados en android/key.properties):
-
-      storePassword = taskfight2024
-      keyPassword   = taskfight2024
-      keyAlias      = upload
-      storeFile     = ../upload-keystore.jks
+privada, etc.). Los datos de firma estan configurados localmente en
+android/key.properties. No guardes contraseñas en este documento ni en Git.
 
 NO subas nunca el .jks ni el key.properties a Git (son secretos).
 
 Para comprobar que el keystore esta y es valido:
       keytool -list -v -keystore android/upload-keystore.jks
-      (te pedira la password: taskfight2024)
+      (introduce localmente la contraseña del keystore cuando la solicite)
 
 ------------------------------------------------------------------------
 3. LIMPIAR Y OBTENER DEPENDENCIAS
@@ -86,17 +106,25 @@ Preparar un dispositivo:
 Comprobar que el dispositivo se ve:
       flutter devices
 
-OPCION 1 - Probar en desarrollo (lo normal, anuncios de TEST/seguros):
+PROBAR LA APP Y LOS ANUNCIOS (metodo recomendado y seguro):
       flutter run
-  -> Arranca en modo debug. Los anuncios que salgan son de PRUEBA.
-     Puedes hacer clic en ellos sin problema.
+  -> Arranca en modo debug y usa automaticamente el ID oficial de anuncio
+        recompensado de PRUEBA de Google. No usa el bloque real de AdMob.
+  -> Inicia sesion y abre Perfil.
+  -> Pulsa el boton para ver un anuncio y obtener monedas.
+  -> Debe abrirse un anuncio identificado como "Test Ad" o "Anuncio de
+        prueba". Miralo hasta el final, cierralo y confirma que la app concede
+        las monedas y muestra el mensaje de recompensa.
+  -> Si el primer intento dice que el anuncio no esta listo, espera unos
+        segundos y vuelve a pulsar: el SDK puede seguir precargandolo.
+  -> Revisa la consola de Flutter. Si falla, busca el mensaje
+        "Rewarded ad failed to load" y su codigo de error.
 
-OPCION 2 - Probar la version release (anuncios REALES):
-      flutter build apk --release
-      flutter install
-  -> Instala la app tal cual saldra publicada.
-  -> ⚠️ AQUI LOS ANUNCIOS SON REALES: NO hagas clic en ellos, AdMob puede
-     banear la cuenta por fraude. Solo comprueba que cargan.
+NO uses una build release para validar anuncios haciendo clic en ellos:
+la build release usa el bloque REAL y tus propias impresiones/clics pueden
+considerarse trafico no valido. Si fuera imprescindible probar una release,
+registra antes el dispositivo como dispositivo de prueba en AdMob y confirma
+que el anuncio muestra claramente la etiqueta de prueba.
 
 (La mejor prueba final "como en Play" es subir el .aab a "Pruebas
  internas" en Play Console y descargar la app desde el movil con el
@@ -106,36 +134,52 @@ OPCION 2 - Probar la version release (anuncios REALES):
 5. SUBIR A GOOGLE PLAY CONSOLE
 ------------------------------------------------------------------------
 - Entrar en https://play.google.com/console  (cuenta de desarrollador,
-  pago unico de 25 USD si aun no la tienes).
-- Crear la app (si no existe): nombre "Task League", idioma, gratuita.
-- Ir a "Producción" (o primero "Pruebas internas" para probar) y crear
-  una nueva version (release).
-- Subir el archivo app-release.aab del paso 4.
-- Rellenar la ficha de Play Store. Tienes textos preparados en:
-      docs/store-listing.md
-- Completar los cuestionarios obligatorios de Play:
-    * Clasificacion de contenido.
-    * Publico objetivo y contenido (edad).
-    * Seguridad de los datos (Data safety): declara que usas
-      Google (login), Firebase/Firestore y AdMob (publicidad).
-    * Politica de privacidad: URL -> https://taskleague.eu/privacy.html
-- Enviar a revision.
+      cuenta creada y pago de 25 USD completado el 01/09/2026).
+- Crear la app (si no existe): "Task League: Tareas y Retos", idioma
+      español, tipo Aplicacion y gratuita.
+- Completar la ficha principal con docs/store-listing.md y subir icono
+      512x512, grafico destacado 1024x500 y capturas de telefono.
+- Completar "Contenido de la aplicacion":
+            * Politica de privacidad: https://taskleague.eu/privacy.html
+            * Eliminacion de cuenta: https://taskleague.eu/delete-account.html
+            * Acceso a la app: explicar el login y facilitar acceso si Play lo pide.
+            * Anuncios: SI, la app contiene anuncios recompensados de AdMob.
+            * Clasificacion de contenido.
+            * Publico objetivo y contenido.
+            * Seguridad de los datos: declarar con exactitud Google Sign-In,
+                  Firebase/Auth/Firestore, Google Calendar y AdMob.
+- Crear primero una version en "Pruebas internas" y subir el
+      app-release.aab. Añadir el email propio como tester, abrir el enlace de
+      participacion desde el movil e instalar la app desde Google Play.
+- Probar login, ligas, tareas, Calendar y el flujo de anuncio recompensado.
+      En una build distribuida por Play los anuncios son reales: NO pulses tus
+      propios anuncios salvo que el dispositivo este configurado como de prueba.
+- Cuando la prueba interna sea correcta, crear una "Prueba cerrada".
+      Si Play Console exige el requisito para cuentas personales nuevas, mantener
+      como minimo el numero de testers y los dias que muestre la propia consola
+      (habitualmente 12 testers durante 14 dias consecutivos).
+- Tras cumplir la prueba cerrada, solicitar acceso a Produccion y responder
+      honestamente al cuestionario sobre la prueba y los comentarios recibidos.
+- Promover la version a Produccion o crear una version de Produccion.
+- Añadir notas de la version, corregir todos los avisos bloqueantes y enviar
+      a revision.
 
 ------------------------------------------------------------------------
-6. RECORDATORIOS / ESTADO ACTUAL (a 28/08/2026)
+6. RECORDATORIOS / ESTADO ACTUAL (a 01/09/2026)
 ------------------------------------------------------------------------
-- OAuth: la verificacion de MARCA/HOMEPAGE ya esta APROBADA (dominio
-  propio taskleague.eu).
-- OAuth: el permiso sensible de Google Calendar (calendar.events) esta
-  EN REVISION por Google. La app funciona igual mientras tanto; puede que
-  Google pida un video de demostracion del flujo (login -> activar sync
-  de calendario -> crear tarea con fecha -> ver el evento en Google
-  Calendar). Si lo piden, preparar ese video.
+- Cuenta de desarrollador de Google Play creada y cuota pagada.
+- OAuth: verificacion completa APROBADA, incluida marca/homepage,
+      politica de privacidad y permiso sensible calendar.events.
+- Dominio y paginas publicas: https://taskleague.eu
 - AdMob (Android) YA con IDs reales de produccion:
       App ID    : ca-app-pub-6185468394048368~9926993842
       Rewarded  : ca-app-pub-6185468394048368/2571248002
   En modo debug se siguen viendo anuncios de TEST (normal y correcto);
   los anuncios reales solo salen en la build --release.
+- app-ads.txt preparado en docs/app-ads.txt. Tras desplegar Firebase debe
+      ser accesible en https://taskleague.eu/app-ads.txt. Cuando la ficha de Play
+      este publicada, vincular Task League con su ficha en AdMob y comprobar que
+      AdMob marque el app-ads.txt como verificado.
 - iOS: NO configurado todavia (sigue con IDs de test). Solo hace falta
   si algun dia publicas en App Store.
 
