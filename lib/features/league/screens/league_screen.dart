@@ -15,7 +15,6 @@ import '../../arena/screens/arena_screen.dart'
     show showArenaAttackDialogWithTask;
 import '../../../core/l10n/app_localizations.dart';
 import '../../../core/widgets/coins_chip.dart';
-import '../../../core/widgets/fighter_sprite.dart';
 
 class LeagueScreen extends ConsumerWidget {
   final String leagueId;
@@ -37,25 +36,22 @@ class LeagueScreen extends ConsumerWidget {
             final typeLabel = league.competitionType == CompetitionType.weekly
                 ? 'Weekly'
                 : 'Monthly';
-            return GestureDetector(
-              onTap: () => context.push('/league/$leagueId/members'),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    league.name,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  league.name,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
                   ),
-                  Text(
-                    '$memberCount ${memberCount == 1 ? 'fighter' : 'fighters'} · $typeLabel',
-                    style: const TextStyle(fontSize: 11, color: Colors.white54),
-                  ),
-                ],
-              ),
+                ),
+                Text(
+                  '$memberCount ${memberCount == 1 ? 'fighter' : 'fighters'} · $typeLabel',
+                  style: const TextStyle(fontSize: 11, color: Colors.white54),
+                ),
+              ],
             );
           },
           orElse: () => const Text('League'),
@@ -452,175 +448,101 @@ class _LeaguePeriodResultsBannerState
         final anyActivity = prev.any((e) => e.tasks > 0);
         if (!anyActivity) return const SizedBox.shrink();
 
-        final periodLabel = widget.leagueType == CompetitionType.weekly
-            ? 'Last week'
-            : 'Last month';
-        final youEntry = prev.firstWhere(
-          (e) => e.member.id == currentUid,
-          orElse: () => prev.last,
-        );
-        final yourRank = prev.indexOf(youEntry) + 1;
-        final isWinner = youEntry.member.id == currentUid && yourRank == 1;
+        final label = widget.leagueType == CompetitionType.weekly
+            ? context.tr('periodResultsLastWeek')
+            : context.tr('periodResultsLastMonth');
+        final winner = prev.first;
+        final winnerIsYou = winner.member.id == currentUid;
+        final winnerName = winner.member.name.isNotEmpty
+            ? winner.member.name
+            : winner.member.email;
 
         return Padding(
           padding: const EdgeInsets.only(bottom: 14),
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: isWinner
-                    ? [
-                        const Color(0xFFFFD700).withAlpha(30),
-                        const Color(0xFF6C3CE1).withAlpha(20),
-                      ]
-                    : [
-                        const Color(0xFF6C3CE1).withAlpha(25),
-                        Colors.white.withAlpha(8),
-                      ],
-              ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isWinner
-                    ? const Color(0xFFFFD700).withAlpha(100)
-                    : const Color(0xFF6C3CE1).withAlpha(80),
+              onTap: () => context.push(
+                '/league/${widget.leagueId}/arena?tab=ranking&period=last',
               ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Header
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 12, 8, 8),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.emoji_events,
-                        color: Color(0xFFFFD700),
-                        size: 18,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '$periodLabel\'s results',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      const Spacer(),
-                      IconButton(
-                        icon: const Icon(
-                          Icons.close,
-                          color: Colors.white38,
-                          size: 16,
-                        ),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        onPressed: () => setState(() => _dismissed = true),
-                      ),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      const Color(0xFFFFD700).withAlpha(28),
+                      const Color(0xFF6C3CE1).withAlpha(20),
                     ],
                   ),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: const Color(0xFFFFD700).withAlpha(90),
+                  ),
                 ),
-                // Top 3 row
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
-                  child: Wrap(
-                    spacing: 12,
-                    runSpacing: 8,
-                    children: prev.take(3).toList().asMap().entries.map((e) {
-                      final medals = ['🥇', '🥈', '🥉'];
-                      final entry = e.value;
-                      final isYou = entry.member.id == currentUid;
-                      final name = entry.member.name.isNotEmpty
-                          ? entry.member.name
-                          : entry.member.email;
-                      return Row(
-                        mainAxisSize: MainAxisSize.min,
+                padding: const EdgeInsets.fromLTRB(14, 10, 6, 10),
+                child: Row(
+                  children: [
+                    const Text('🏆', style: TextStyle(fontSize: 22)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            medals[e.key],
-                            style: const TextStyle(fontSize: 18),
+                            label,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.3,
+                            ),
                           ),
-                          const SizedBox(width: 5),
-                          FighterSprite(
-                            skin: entry.member.characterSkin,
-                            size: 30,
-                          ),
-                          const SizedBox(width: 5),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          const SizedBox(height: 2),
+                          Row(
                             children: [
-                              Text(
-                                name,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  color: isYou
-                                      ? const Color(0xFFFFD700)
-                                      : Colors.white,
-                                ),
-                              ),
-                              Text(
-                                '${entry.tasks} tasks',
-                                style: const TextStyle(
-                                  fontSize: 9,
-                                  color: Colors.white38,
+                              const Text('🥇', style: TextStyle(fontSize: 12)),
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  winnerName,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: winnerIsYou
+                                        ? const Color(0xFFFFD700)
+                                        : Colors.white70,
+                                  ),
                                 ),
                               ),
                             ],
                           ),
                         ],
-                      );
-                    }).toList(),
-                  ),
-                ),
-                // Your result if not top 3
-                if (currentUid != null && yourRank > 3) ...[
-                  const Divider(
-                    color: Colors.white12,
-                    height: 1,
-                    indent: 14,
-                    endIndent: 14,
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF6C3CE1).withAlpha(80),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text(
-                            'YOU',
-                            style: TextStyle(
-                              color: Color(0xFFB39DDB),
-                              fontSize: 8,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '#$yourRank · ${youEntry.tasks} tasks · ${youEntry.damage} dmg',
-                          style: const TextStyle(
-                            color: Colors.white54,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
-                ] else
-                  const SizedBox(height: 4),
-              ],
+                    const Icon(
+                      Icons.chevron_right,
+                      color: Colors.white38,
+                      size: 22,
+                    ),
+                    IconButton(
+                      icon: const Icon(
+                        Icons.close,
+                        color: Colors.white38,
+                        size: 16,
+                      ),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(
+                        minWidth: 32,
+                        minHeight: 32,
+                      ),
+                      onPressed: () => setState(() => _dismissed = true),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         );

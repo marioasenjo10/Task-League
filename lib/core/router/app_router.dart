@@ -11,7 +11,6 @@ import '../../features/tasks/screens/task_list_screen.dart';
 import '../../features/tasks/screens/create_task_screen.dart';
 import '../../features/history/screens/history_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
-import '../../features/league/screens/members_screen.dart';
 import '../../features/stats/screens/stats_screen.dart';
 
 class AppRouter {
@@ -50,8 +49,13 @@ class AppRouter {
           GoRoute(
             path: 'arena',
             name: 'arena',
-            builder: (context, state) =>
-                ArenaScreen(leagueId: state.pathParameters['leagueId']!),
+            builder: (context, state) => ArenaScreen(
+              leagueId: state.pathParameters['leagueId']!,
+              initialTabIndex:
+                  state.uri.queryParameters['tab'] == 'ranking' ? 2 : 0,
+              rankingShowsPrevious:
+                  state.uri.queryParameters['period'] == 'last',
+            ),
           ),
           GoRoute(
             path: 'tasks',
@@ -72,12 +76,6 @@ class AppRouter {
             name: 'history',
             builder: (context, state) =>
                 HistoryScreen(leagueId: state.pathParameters['leagueId']!),
-          ),
-          GoRoute(
-            path: 'members',
-            name: 'members',
-            builder: (context, state) =>
-                MembersScreen(leagueId: state.pathParameters['leagueId']!),
           ),
           GoRoute(
             path: 'stats',

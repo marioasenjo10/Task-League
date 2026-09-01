@@ -1,12 +1,64 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../repositories/league_repository.dart';
 import '../models/league_model.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../auth/repositories/user_repository.dart';
+import '../../auth/models/user_model.dart';
 
 final leagueRepositoryProvider = Provider<LeagueRepository>(
   (ref) => LeagueRepository(),
 );
+
+// ---------------------------------------------------------------------------
+// Provider: fetch all member UserModels for a given leagueId
+// ---------------------------------------------------------------------------
+
+final leagueMembersProvider = StreamProvider.family<List<UserModel>, String>(
+  (ref, leagueId) async* {
+    // Depend on auth state — when the user signs out/in this provider restarts
+    final currentUid = ref.watch(authStateProvider).valueOrNull?.uid;
+    if (currentUid == null) {
+      yield [];
+      return;
+    }
+
+    final league = await ref.watch(leagueProvider(leagueId).future);
+    if (league == null) {
+      yield [];
+      return;
+    }
+    final repo = UserRepository();
+    // Combine streams of all members into one list stream
+    final streams = league.memberIds.map((uid) => repo.watchUser(uid)).toList();
+    yield* _mergeUserStreams(streams);
+  },
+);
+
+/// Merges multiple user streams into a single list stream.
+Stream<List<UserModel>> _mergeUserStreams(
+    List<Stream<UserModel?>> streams) async* {
+  if (streams.isEmpty) {
+    yield [];
+    return;
+  }
+  final latest = List<UserModel?>.filled(streams.length, null);
+  // Use a broadcast approach: re-emit on any change
+  final controller =
+      StreamController<List<UserModel>>.broadcast();
+
+  for (int i = 0; i < streams.length; i++) {
+    final idx = i;
+    streams[idx].listen((user) {
+      latest[idx] = user;
+      if (!controller.isClosed) {
+        controller.add(latest.whereType<UserModel>().toList());
+      }
+    });
+  }
+
+  yield* controller.stream;
+}
 
 /// All leagues for the current user.
 final userLeaguesProvider = StreamProvider<List<LeagueModel>>((ref) {

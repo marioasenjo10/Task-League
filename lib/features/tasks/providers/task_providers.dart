@@ -9,7 +9,7 @@ final taskRepositoryProvider = Provider<TaskRepository>(
 
 /// All tasks for a given league, streamed in real-time.
 final leagueTasksProvider =
-    StreamProvider.family<List<TaskModel>, String>((ref, leagueId) {
+    StreamProvider.autoDispose.family<List<TaskModel>, String>((ref, leagueId) {
   final uid = ref.watch(authStateProvider).valueOrNull?.uid;
   if (uid == null) return Stream.value([]);
   return ref.watch(taskRepositoryProvider).watchTasks(leagueId);
@@ -17,7 +17,7 @@ final leagueTasksProvider =
 
 /// Unassigned league tasks — excludes occurrence subtasks (parentTaskId != null).
 final unassignedTasksProvider =
-    Provider.family<AsyncValue<List<TaskModel>>, String>((ref, leagueId) {
+    Provider.autoDispose.family<AsyncValue<List<TaskModel>>, String>((ref, leagueId) {
   return ref.watch(leagueTasksProvider(leagueId)).whenData(
         (tasks) => tasks
             .where((t) => t.assigneeId == null && t.parentTaskId == null)
@@ -29,7 +29,7 @@ final unassignedTasksProvider =
 /// (one-time tasks and occurrence subtasks spawned from recurring templates).
 /// Completed when done (deleted).
 final myUpcomingTasksProvider =
-    Provider.family<AsyncValue<List<TaskModel>>, String>((ref, leagueId) {
+    Provider.autoDispose.family<AsyncValue<List<TaskModel>>, String>((ref, leagueId) {
   final uid = ref.watch(authStateProvider).valueOrNull?.uid;
   return ref.watch(leagueTasksProvider(leagueId)).whenData(
         (tasks) {
@@ -47,7 +47,7 @@ final myUpcomingTasksProvider =
 
 /// Recurring tasks assigned to the current user (templates — date advances on complete).
 final myRecurringTasksProvider =
-    Provider.family<AsyncValue<List<TaskModel>>, String>((ref, leagueId) {
+    Provider.autoDispose.family<AsyncValue<List<TaskModel>>, String>((ref, leagueId) {
   final uid = ref.watch(authStateProvider).valueOrNull?.uid;
   return ref.watch(leagueTasksProvider(leagueId)).whenData(
         (tasks) => tasks
@@ -60,7 +60,7 @@ final myRecurringTasksProvider =
 
 /// Combined: all tasks assigned to the current user (for backwards compat).
 final myTasksProvider =
-    Provider.family<AsyncValue<List<TaskModel>>, String>((ref, leagueId) {
+    Provider.autoDispose.family<AsyncValue<List<TaskModel>>, String>((ref, leagueId) {
   final uid = ref.watch(authStateProvider).valueOrNull?.uid;
   return ref.watch(leagueTasksProvider(leagueId)).whenData(
         (tasks) => tasks

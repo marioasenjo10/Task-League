@@ -10,7 +10,6 @@ import '../../auth/providers/auth_providers.dart';
 import '../../auth/models/user_model.dart';
 import '../../league/providers/league_providers.dart';
 import '../../league/models/league_model.dart';
-import '../../league/screens/members_screen.dart' show leagueMembersProvider;
 import '../../arena/screens/arena_screen.dart'
     show showArenaAttackDialogWithTask;
 import '../../../core/l10n/app_localizations.dart';

@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../history/providers/history_providers.dart';
 import '../../history/models/task_event_model.dart';
-import '../../league/screens/members_screen.dart' show leagueMembersProvider;
+import '../../league/providers/league_providers.dart' show leagueMembersProvider;
 import '../../league/models/league_model.dart';
 import '../../auth/models/user_model.dart';
 
@@ -222,7 +222,7 @@ class LeagueStats {
 /// (this month, last month, 3-month window, custom range) queries just its date
 /// range server-side, keeping Firestore reads proportional to the window shown.
 final statsEventsProvider =
-    StreamProvider.family<List<TaskEventModel>, String>((ref, leagueId) {
+    StreamProvider.autoDispose.family<List<TaskEventModel>, String>((ref, leagueId) {
   final filter = ref.watch(statsFilterProvider(leagueId));
   final repo = ref.watch(taskEventRepositoryProvider);
   if (filter.isAllTime) {
@@ -234,7 +234,7 @@ final statsEventsProvider =
 });
 
 final leagueStatsProvider =
-    Provider.family<AsyncValue<LeagueStats>, String>((ref, leagueId) {
+    Provider.autoDispose.family<AsyncValue<LeagueStats>, String>((ref, leagueId) {
   final allAsync     = ref.watch(statsEventsProvider(leagueId));
   final membersAsync = ref.watch(leagueMembersProvider(leagueId));
   final filter       = ref.watch(statsFilterProvider(leagueId));
@@ -292,12 +292,16 @@ final leagueStatsProvider =
 /// One entry in the current-period ranking.
 class PeriodRankEntry {
   final UserModel member;
+  final int hp;          // remaining HP this period (primary ranking metric)
+  final int maxHp;       // max HP for the period type
   final int tasks;       // tasks completed this period
   final int damage;      // total damage dealt this period
   final int coins;       // coins earned this period
 
   const PeriodRankEntry({
     required this.member,
+    required this.hp,
+    required this.maxHp,
     required this.tasks,
     required this.damage,
     required this.coins,
@@ -344,14 +348,14 @@ StatsDateRange previousPeriodRange(CompetitionType type) {
 /// results is most relevant (Mon/Tue/Wed for weekly; 1st–3rd for monthly).
 bool isStartOfPeriod(CompetitionType type) {
   final now = DateTime.now();
-  return type == CompetitionType.weekly ? now.weekday <= 3 : now.day <= 3;
+  return type == CompetitionType.weekly ? now.weekday <= 2 : now.day <= 2;
 }
 
 /// Bounded event stream that feeds the Arena ranking (current + previous
 /// period). It reads only from the start of the **previous** period onwards, so
 /// arena reads stay small (≈ 1–2 periods of events) instead of the whole
 /// history.
-final periodEventsProvider = StreamProvider.family<List<TaskEventModel>,
+final periodEventsProvider = StreamProvider.autoDispose.family<List<TaskEventModel>,
     ({String leagueId, CompetitionType type})>((ref, args) {
   final start = previousPeriodRange(args.type).start;
   return ref
@@ -362,7 +366,7 @@ final periodEventsProvider = StreamProvider.family<List<TaskEventModel>,
 /// Provider family — key is leagueId.
 /// Returns a ranked list of [PeriodRankEntry] sorted by tasks desc for the
 /// current weekly/monthly competition period.
-final periodRankingProvider = Provider.family<
+final periodRankingProvider = Provider.autoDispose.family<
     AsyncValue<List<PeriodRankEntry>>, ({String leagueId, CompetitionType type})>(
   (ref, args) {
     final eventsAsync = ref.watch(periodEventsProvider(args));
@@ -391,18 +395,29 @@ final periodRankingProvider = Provider.family<
       byMember.putIfAbsent(e.doerId, () => []).add(e);
     }
 
+    final maxHp = maxHpForType(args.type);
+    final periodKey = currentPeriodKey(args.type);
     final ranked = members.map((m) {
       final evts = byMember[m.id] ?? [];
+      // HP resets lazily per member, so a member who hasn't opened the app this
+      // period still holds last period's HP in their doc. Treat them as full HP
+      // unless their stored reset key matches the current period.
+      final hp = m.lastHpResetByLeague[args.leagueId] == periodKey
+          ? m.currentHp(args.leagueId, maxHp: maxHp)
+          : maxHp;
       return PeriodRankEntry(
         member: m,
+        hp:     hp,
+        maxHp:  maxHp,
         tasks:  evts.length,
         damage: evts.fold(0, (s, e) => s + e.damageDealt),
         coins:  evts.fold(0, (s, e) => s + e.coinsEarned),
       );
     }).toList()
       ..sort((a, b) {
-        if (b.tasks != a.tasks) return b.tasks.compareTo(a.tasks);
-        return b.damage.compareTo(a.damage); // tie-break by damage
+        if (b.hp != a.hp) return b.hp.compareTo(a.hp);         // most HP first
+        if (b.tasks != a.tasks) return b.tasks.compareTo(a.tasks); // tie-break tasks
+        return b.damage.compareTo(a.damage);                   // final tie-break
       });
 
     return AsyncData(ranked);
@@ -411,7 +426,7 @@ final periodRankingProvider = Provider.family<
 
 /// Provider family — same shape as [periodRankingProvider] but for the
 /// **previous** period. Used to show last week/month's results banner.
-final previousPeriodRankingProvider = Provider.family<
+final previousPeriodRankingProvider = Provider.autoDispose.family<
     AsyncValue<List<PeriodRankEntry>>, ({String leagueId, CompetitionType type})>(
   (ref, args) {
     final eventsAsync  = ref.watch(periodEventsProvider(args));
@@ -434,20 +449,35 @@ final previousPeriodRankingProvider = Provider.family<
       byMember.putIfAbsent(e.doerId, () => []).add(e);
     }
 
+    // HP resets at each period boundary, so the previous period's remaining HP
+    // can't be read from the live user doc. Reconstruct it from the damage
+    // each member received during that period: hp = maxHp - damageReceived.
+    final maxHp = maxHpForType(args.type);
+    final Map<String, int> dmgReceived = {};
+    for (final e in filtered) {
+      final t = e.targetId;
+      if (t != null) {
+        dmgReceived.update(t, (v) => v + e.damageDealt,
+            ifAbsent: () => e.damageDealt);
+      }
+    }
+
     final ranked = members.map((m) {
       final evts = byMember[m.id] ?? [];
+      final hp = (maxHp - (dmgReceived[m.id] ?? 0)).clamp(0, maxHp);
       return PeriodRankEntry(
         member: m,
+        hp:     hp,
+        maxHp:  maxHp,
         tasks:  evts.length,
         damage: evts.fold(0, (s, e) => s + e.damageDealt),
         coins:  evts.fold(0, (s, e) => s + e.coinsEarned),
       );
     }).toList()
       ..sort((a, b) {
-        if (b.tasks != a.tasks) return b.tasks.compareTo(a.tasks);
-        if (b.damage != a.damage) return b.damage.compareTo(a.damage);
-        // Final tie-break: fewest coins lost (most resilient — proxy for HP)
-        return a.coins.compareTo(b.coins);
+        if (b.hp != a.hp) return b.hp.compareTo(a.hp);         // most HP first
+        if (b.tasks != a.tasks) return b.tasks.compareTo(a.tasks); // tie-break tasks
+        return b.damage.compareTo(a.damage);                   // final tie-break
       });
 
     return AsyncData(ranked);

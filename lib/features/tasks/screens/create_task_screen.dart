@@ -7,7 +7,7 @@ import '../../../core/services/quota_guard.dart';
 import '../providers/task_service_provider.dart';
 import '../models/task_model.dart';
 import '../../auth/providers/auth_providers.dart';
-import '../../league/screens/members_screen.dart' show leagueMembersProvider;
+import '../../league/providers/league_providers.dart' show leagueMembersProvider;
 
 // Reminder options: translation key → minutes before
 const _reminderOptions = <String, int?>{

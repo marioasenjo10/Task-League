@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../providers/history_providers.dart';
 import '../models/task_event_model.dart';
-import '../../league/screens/members_screen.dart' show leagueMembersProvider;
+import '../../league/providers/league_providers.dart' show leagueMembersProvider;
 
 class HistoryScreen extends ConsumerStatefulWidget {
   final String leagueId;

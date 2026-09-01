@@ -257,6 +257,10 @@ const _en = <String, String>{
   'periodSince': '{label} · since {date}',
   'periodResultsLastWeek': 'Last week\'s results',
   'periodResultsLastMonth': 'Last month\'s results',
+  'rankingTabCurrent': 'Current',
+  'rankingTabPrevious': 'Last period',
+  'tapToSeeResults': 'Tap to see the full ranking',
+  'noResultsYet': 'No results for this period yet.',
   'shieldBlockedMsg':
       '🛡️ {name} has a shield active for {time} — your attack will be blocked!',
   'attackAnyway': 'Attack anyway',
@@ -304,6 +308,8 @@ const _en = <String, String>{
   'watchAdCapReached': 'No more ad rewards today',
   'watchAdNotReady': 'No ad available right now - try again shortly.',
   'watchAdRewarded': '+{coins} coins earned!',
+  'watchAdBonusCoin': 'Watch ad · +1 🪙 bonus',
+  'bonusCoinAdded': '+1 🪙 bonus added!',
 
   // Statistics
   'statistics': 'Statistics',
@@ -607,6 +613,10 @@ const _es = <String, String>{
   'periodSince': '{label} · desde {date}',
   'periodResultsLastWeek': 'Resultados de la semana pasada',
   'periodResultsLastMonth': 'Resultados del mes pasado',
+  'rankingTabCurrent': 'Actual',
+  'rankingTabPrevious': 'Periodo anterior',
+  'tapToSeeResults': 'Toca para ver el ranking completo',
+  'noResultsYet': 'Aún no hay resultados de este periodo.',
   'shieldBlockedMsg':
       '🛡️ {name} tiene un escudo activo durante {time} — ¡tu ataque será bloqueado!',
   'attackAnyway': 'Atacar igualmente',
@@ -652,6 +662,8 @@ const _es = <String, String>{
   'profileToday': 'hoy',
   'watchAdForCoins': 'Ver anuncio +{coins} monedas ({left} rest.)',
   'watchAdCapReached': 'No hay más recompensas hoy',
+  'watchAdBonusCoin': 'Ver anuncio · +1 🪙 extra',
+  'bonusCoinAdded': '¡+1 🪙 extra añadida!',
   'watchAdNotReady':
       'No hay anuncio disponible ahora - inténtalo en un momento.',
   'watchAdRewarded': '¡+{coins} monedas conseguidas!',

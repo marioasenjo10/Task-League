@@ -6,7 +6,6 @@ import '../../../core/l10n/app_localizations.dart';
 import '../../../core/services/quota_guard.dart';
 import '../../../core/services/ads_service.dart';
 import '../../../core/widgets/fighter_sprite.dart';
-import '../../league/screens/members_screen.dart' show leagueMembersProvider;
 import '../../league/providers/league_providers.dart';
 import '../../league/models/league_model.dart';
 import '../../auth/providers/auth_providers.dart';
@@ -20,8 +19,7 @@ import '../../stats/providers/stats_providers.dart'
         periodRankingProvider,
         previousPeriodRankingProvider,
         PeriodRankEntry,
-        currentPeriodRange,
-        isStartOfPeriod;
+        currentPeriodRange;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Main screen
@@ -29,7 +27,20 @@ import '../../stats/providers/stats_providers.dart'
 
 class ArenaScreen extends ConsumerStatefulWidget {
   final String leagueId;
-  const ArenaScreen({super.key, required this.leagueId});
+
+  /// Which top-level tab to open initially (0=Ring, 1=Players, 2=Ranking).
+  final int initialTabIndex;
+
+  /// When opening the Ranking tab, whether to default to the "Last period"
+  /// sub-tab instead of "Current".
+  final bool rankingShowsPrevious;
+
+  const ArenaScreen({
+    super.key,
+    required this.leagueId,
+    this.initialTabIndex = 0,
+    this.rankingShowsPrevious = false,
+  });
 
   @override
   ConsumerState<ArenaScreen> createState() => _ArenaScreenState();
@@ -44,7 +55,11 @@ class _ArenaScreenState extends ConsumerState<ArenaScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(
+      length: 3,
+      vsync: this,
+      initialIndex: widget.initialTabIndex,
+    );
   }
 
   @override
@@ -141,6 +156,7 @@ class _ArenaScreenState extends ConsumerState<ArenaScreen>
               _RankingTab(
                 leagueId: widget.leagueId,
                 leagueType: league.competitionType,
+                showPreviousInitially: widget.rankingShowsPrevious,
               ),
             ],
           );
@@ -226,18 +242,42 @@ class _RingTab extends ConsumerWidget {
 class _RankingTab extends ConsumerStatefulWidget {
   final String leagueId;
   final CompetitionType leagueType;
+  final bool showPreviousInitially;
 
-  const _RankingTab({required this.leagueId, required this.leagueType});
+  const _RankingTab({
+    required this.leagueId,
+    required this.leagueType,
+    this.showPreviousInitially = false,
+  });
 
   @override
   ConsumerState<_RankingTab> createState() => _RankingTabState();
 }
 
-class _RankingTabState extends ConsumerState<_RankingTab> {
-  bool _bannerDismissed = false;
+class _RankingTabState extends ConsumerState<_RankingTab>
+    with SingleTickerProviderStateMixin {
+  late final TabController _subTab;
+
+  @override
+  void initState() {
+    super.initState();
+    _subTab = TabController(
+      length: 2,
+      vsync: this,
+      initialIndex: widget.showPreviousInitially ? 1 : 0,
+    );
+  }
+
+  @override
+  void dispose() {
+    _subTab.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final currentUid = ref.watch(authStateProvider).valueOrNull?.uid;
+
     final rankAsync = ref.watch(
       periodRankingProvider((
         leagueId: widget.leagueId,
@@ -250,16 +290,83 @@ class _RankingTabState extends ConsumerState<_RankingTab> {
         type: widget.leagueType,
       )),
     );
-    final currentUid = ref.watch(authStateProvider).valueOrNull?.uid;
+
     final range = currentPeriodRange(widget.leagueType);
-    final periodLabel = widget.leagueType == CompetitionType.weekly
-        ? context.tr('periodThisWeek')
-        : context.tr('periodThisMonth');
     final startLabel =
         '${range.start.day.toString().padLeft(2, '0')}/${range.start.month.toString().padLeft(2, '0')}';
+    final currentLabel = widget.leagueType == CompetitionType.weekly
+        ? context.tr('periodThisWeek')
+        : context.tr('periodThisMonth');
+    final currentHeader = context.trArgs('periodSince', {
+      'label': currentLabel,
+      'date': startLabel,
+    });
+    final previousHeader = widget.leagueType == CompetitionType.weekly
+        ? context.tr('periodResultsLastWeek')
+        : context.tr('periodResultsLastMonth');
 
-    final showBanner = !_bannerDismissed && isStartOfPeriod(widget.leagueType);
+    return Column(
+      children: [
+        Material(
+          color: Colors.transparent,
+          child: TabBar(
+            controller: _subTab,
+            indicatorColor: const Color(0xFF6C3CE1),
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white38,
+            labelStyle:
+                const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+            tabs: [
+              Tab(text: context.tr('rankingTabCurrent')),
+              Tab(text: context.tr('rankingTabPrevious')),
+            ],
+          ),
+        ),
+        Expanded(
+          child: TabBarView(
+            controller: _subTab,
+            children: [
+              _RankingListView(
+                rankAsync: rankAsync,
+                currentUid: currentUid,
+                header: currentHeader,
+              ),
+              _RankingListView(
+                rankAsync: prevRankAsync,
+                currentUid: currentUid,
+                header: previousHeader,
+                requireActivity: true,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared ranking list — podium + full list, used by both ranking sub-tabs
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _RankingListView extends StatelessWidget {
+  final AsyncValue<List<PeriodRankEntry>> rankAsync;
+  final String? currentUid;
+  final String header;
+
+  /// When true (previous period), an empty or no-activity result shows a
+  /// "no results yet" placeholder instead of the podium.
+  final bool requireActivity;
+
+  const _RankingListView({
+    required this.rankAsync,
+    required this.currentUid,
+    required this.header,
+    this.requireActivity = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return rankAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(
@@ -269,26 +376,25 @@ class _RankingTabState extends ConsumerState<_RankingTab> {
         ),
       ),
       data: (ranking) {
-        if (ranking.isEmpty) {
+        final hasActivity =
+            ranking.any((e) => e.tasks > 0 || e.hp < e.maxHp);
+        if (ranking.isEmpty || (requireActivity && !hasActivity)) {
           return Center(
-            child: Text(
-              context.tr('noFightersYet'),
-              style: const TextStyle(color: Colors.white54),
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Text(
+                requireActivity
+                    ? context.tr('noResultsYet')
+                    : context.tr('noFightersYet'),
+                style: const TextStyle(color: Colors.white54),
+                textAlign: TextAlign.center,
+              ),
             ),
           );
         }
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
           children: [
-            // ── Previous period results banner ────────────────────
-            if (showBanner)
-              _PreviousPeriodBanner(
-                leagueType: widget.leagueType,
-                prevRankAsync: prevRankAsync,
-                currentUid: currentUid,
-                onDismiss: () => setState(() => _bannerDismissed = true),
-              ),
-
             // ── Period header ─────────────────────────────────────
             Row(
               children: [
@@ -298,15 +404,14 @@ class _RankingTabState extends ConsumerState<_RankingTab> {
                   size: 18,
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  context.trArgs('periodSince', {
-                    'label': periodLabel,
-                    'date': startLabel,
-                  }),
-                  style: const TextStyle(
-                    color: Colors.white54,
-                    fontSize: 12,
-                    letterSpacing: 1,
+                Expanded(
+                  child: Text(
+                    header,
+                    style: const TextStyle(
+                      color: Colors.white54,
+                      fontSize: 12,
+                      letterSpacing: 1,
+                    ),
                   ),
                 ),
               ],
@@ -321,251 +426,15 @@ class _RankingTabState extends ConsumerState<_RankingTab> {
 
             // ── Full list (all members, ranked) ───────────────────
             ...ranking.asMap().entries.map(
-              (e) => _RankRow(
-                entry: e.value,
-                rank: e.key + 1,
-                isCurrentUser: e.value.member.id == currentUid,
-              ),
-            ),
+                  (e) => _RankRow(
+                    entry: e.value,
+                    rank: e.key + 1,
+                    isCurrentUser: e.value.member.id == currentUid,
+                  ),
+                ),
           ],
         );
       },
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Previous period results banner
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _PreviousPeriodBanner extends StatelessWidget {
-  final CompetitionType leagueType;
-  final AsyncValue<List<PeriodRankEntry>> prevRankAsync;
-  final String? currentUid;
-  final VoidCallback onDismiss;
-
-  const _PreviousPeriodBanner({
-    required this.leagueType,
-    required this.prevRankAsync,
-    required this.currentUid,
-    required this.onDismiss,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final label = leagueType == CompetitionType.weekly
-        ? context.tr('periodResultsLastWeek')
-        : context.tr('periodResultsLastMonth');
-
-    return prevRankAsync.when(
-      loading: () => const SizedBox.shrink(),
-      error: (_, _) => const SizedBox.shrink(),
-      data: (prev) {
-        // Don't show banner if nobody completed any tasks last period
-        final anyActivity = prev.any((e) => e.tasks > 0);
-        if (!anyActivity) return const SizedBox.shrink();
-
-        final winner = prev[0];
-        final second = prev.length > 1 ? prev[1] : null;
-        final third = prev.length > 2 ? prev[2] : null;
-        final youEntry = prev.firstWhere(
-          (e) => e.member.id == currentUid,
-          orElse: () => prev.last,
-        );
-        final yourRank = prev.indexOf(youEntry) + 1;
-        final isWinner = youEntry.member.id == currentUid && yourRank == 1;
-
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 20),
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: isWinner
-                    ? [
-                        const Color(0xFFFFD700).withAlpha(30),
-                        const Color(0xFF6C3CE1).withAlpha(20),
-                      ]
-                    : [
-                        const Color(0xFF6C3CE1).withAlpha(25),
-                        Colors.white.withAlpha(8),
-                      ],
-              ),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isWinner
-                    ? const Color(0xFFFFD700).withAlpha(100)
-                    : const Color(0xFF6C3CE1).withAlpha(80),
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // ── Header bar ──────────────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 12, 8, 0),
-                  child: Row(
-                    children: [
-                      const Text('🏆', style: TextStyle(fontSize: 16)),
-                      const SizedBox(width: 8),
-                      Text(
-                        label,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      const Spacer(),
-                      IconButton(
-                        icon: const Icon(
-                          Icons.close,
-                          color: Colors.white38,
-                          size: 16,
-                        ),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        onPressed: onDismiss,
-                      ),
-                    ],
-                  ),
-                ),
-
-                // ── Top 3 mini podium ───────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
-                  child: Row(
-                    children: [
-                      _BannerPodiumSlot(
-                        entry: winner,
-                        rank: 1,
-                        medal: '🥇',
-                        color: const Color(0xFFFFD700),
-                        isCurrentUser: winner.member.id == currentUid,
-                      ),
-                      if (second != null) ...[
-                        const SizedBox(width: 8),
-                        _BannerPodiumSlot(
-                          entry: second,
-                          rank: 2,
-                          medal: '🥈',
-                          color: const Color(0xFFB0BEC5),
-                          isCurrentUser: second.member.id == currentUid,
-                        ),
-                      ],
-                      if (third != null) ...[
-                        const SizedBox(width: 8),
-                        _BannerPodiumSlot(
-                          entry: third,
-                          rank: 3,
-                          medal: '🥉',
-                          color: const Color(0xFFCD7F32),
-                          isCurrentUser: third.member.id == currentUid,
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-
-                // ── Your result (if not in top 3) ───────────────────
-                if (currentUid != null && yourRank > 3) ...[
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 14),
-                    child: Divider(color: Colors.white12, height: 20),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF6C3CE1).withAlpha(80),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text(
-                            'YOU',
-                            style: TextStyle(
-                              color: Color(0xFFB39DDB),
-                              fontSize: 8,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '#$yourRank · ${youEntry.tasks} tasks · ${youEntry.damage} dmg',
-                          style: const TextStyle(
-                            color: Colors.white54,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ] else
-                  const SizedBox(height: 14),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _BannerPodiumSlot extends StatelessWidget {
-  final PeriodRankEntry entry;
-  final int rank;
-  final String medal;
-  final Color color;
-  final bool isCurrentUser;
-
-  const _BannerPodiumSlot({
-    required this.entry,
-    required this.rank,
-    required this.medal,
-    required this.color,
-    required this.isCurrentUser,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final name = entry.member.name.isNotEmpty
-        ? entry.member.name
-        : entry.member.email;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(medal, style: const TextStyle(fontSize: 18)),
-        const SizedBox(width: 6),
-        FighterSprite(skin: entry.member.characterSkin, size: 32),
-        const SizedBox(width: 6),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              name,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                color: isCurrentUser ? color : Colors.white,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-            Text(
-              '${entry.tasks} tasks',
-              style: const TextStyle(fontSize: 9, color: Colors.white38),
-            ),
-          ],
-        ),
-      ],
     );
   }
 }
@@ -693,7 +562,7 @@ class _PodiumSlot extends StatelessWidget {
           textAlign: TextAlign.center,
         ),
         Text(
-          '${entry.tasks} tasks',
+          '❤️ ${entry.hp}/${entry.maxHp} HP',
           style: const TextStyle(fontSize: 10, color: Colors.white38),
         ),
         const SizedBox(height: 4),
@@ -837,7 +706,7 @@ class _RankRow extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '${entry.tasks} tasks · ${entry.damage} dmg · 🪙${entry.coins}',
+                    '❤️ ${entry.hp}/${entry.maxHp} HP · ${entry.tasks} tasks · 🪙${entry.coins}',
                     style: const TextStyle(fontSize: 10, color: Colors.white38),
                   ),
                 ],
@@ -850,7 +719,7 @@ class _RankRow extends StatelessWidget {
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
-                '${entry.tasks}',
+                '❤️${entry.hp}',
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -2693,6 +2562,7 @@ Future<void> showArenaAttackDialog(
             task: task,
             attackerIsKO: attackerIsKO,
             noAttacksLeft: attacksRemaining == 0,
+            currentUserId: currentUid,
             onComplete: () async {
               final event = await ref
                   .read(taskServiceProvider)
@@ -2818,6 +2688,7 @@ Future<void> showArenaAttackDialogWithTask(
             task: task,
             attackerIsKO: attackerIsKO,
             noAttacksLeft: remaining == 0,
+            currentUserId: currentUid,
             onComplete: () async {
               final event = await ref
                   .read(taskServiceProvider)
@@ -2866,9 +2737,6 @@ class _OpponentPickerSheet extends ConsumerStatefulWidget {
 
 class _OpponentPickerSheetState extends ConsumerState<_OpponentPickerSheet> {
   late String _doerId;
-  bool _watchingAd = false;
-  // Ad-for-coin rewards claimed in THIS session (applies to current user).
-  int _adRewardsClaimed = 0;
 
   @override
   void initState() {
@@ -2880,45 +2748,6 @@ class _OpponentPickerSheetState extends ConsumerState<_OpponentPickerSheet> {
     final todayStr = DateTime.now().toIso8601String().substring(0, 10);
     final used = doer.lastAttackDate == todayStr ? doer.todayAttacks : 0;
     return (kMaxDailyAttacks - used).clamp(0, kMaxDailyAttacks);
-  }
-
-  /// Whether the current user can still claim an ad-for-coin reward today.
-  bool _canWatchAdForCoin(UserModel doer) {
-    if (doer.id != widget.currentUserId) return false;
-    if (!ref.read(adsServiceProvider).canOfferReward) return false;
-    final todayStr = DateTime.now().toIso8601String().substring(0, 10);
-    final storedClaims = doer.lastBonusAttackDate == todayStr
-        ? doer.bonusAttacksToday
-        : 0;
-    return storedClaims + _adRewardsClaimed < kMaxAdAttacks;
-  }
-
-  Future<void> _watchAdForCoin(UserModel doer) async {
-    setState(() => _watchingAd = true);
-    final ads = ref.read(adsServiceProvider);
-    final messenger = ScaffoldMessenger.of(context);
-    try {
-      final earned = await ads.showRewarded();
-      if (!mounted) return;
-      if (!earned) {
-        messenger.showSnackBar(
-          SnackBar(content: Text(context.tr('watchAdNotReady'))),
-        );
-        return;
-      }
-      final coins = await ref
-          .read(userRepositoryProvider)
-          .grantAdAttackCoin(doer.id);
-      if (!mounted) return;
-      if (coins > 0) {
-        setState(() => _adRewardsClaimed += 1);
-        messenger.showSnackBar(
-          SnackBar(content: Text(context.tr('adAttackUnlocked'))),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _watchingAd = false);
-    }
   }
 
   @override
@@ -3080,45 +2909,13 @@ class _OpponentPickerSheetState extends ConsumerState<_OpponentPickerSheet> {
             else if (!canAttack)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
-                child: Column(
-                  children: [
-                    Text(
-                      context.tr('attackCapUnlockTomorrow'),
-                      style: const TextStyle(
-                        color: Colors.white38,
-                        fontSize: 12,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    if (_canWatchAdForCoin(doer)) ...[
-                      const SizedBox(height: 10),
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
-                          onPressed: _watchingAd
-                              ? null
-                              : () => _watchAdForCoin(doer),
-                          icon: _watchingAd
-                              ? const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Icon(Icons.play_circle_outline, size: 18),
-                          label: Text(context.tr('watchAdToAttack')),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: const Color(0xFFFFD54F),
-                            side: BorderSide(
-                              color: const Color(0xFFFFC107).withAlpha(120),
-                            ),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
+                child: Text(
+                  context.tr('attackCapUnlockTomorrow'),
+                  style: const TextStyle(
+                    color: Colors.white38,
+                    fontSize: 12,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
               )
             else ...[
@@ -3378,52 +3175,6 @@ class _ArenaTaskPickerSheet extends ConsumerStatefulWidget {
 }
 
 class _ArenaTaskPickerSheetState extends ConsumerState<_ArenaTaskPickerSheet> {
-  bool _watchingAd = false;
-  // Ad-for-coin rewards claimed in THIS session.
-  int _adRewardsClaimed = 0;
-
-  /// Whether the current user can still claim an ad-for-coin reward today.
-  bool _canWatchAdForCoin() {
-    final user = widget.currentUser;
-    if (user == null) return false;
-    if (!ref.read(adsServiceProvider).canOfferReward) return false;
-    final todayStr = DateTime.now().toIso8601String().substring(0, 10);
-    final storedClaims = user.lastBonusAttackDate == todayStr
-        ? user.bonusAttacksToday
-        : 0;
-    return storedClaims + _adRewardsClaimed < kMaxAdAttacks;
-  }
-
-  Future<void> _watchAdForCoin() async {
-    final user = widget.currentUser;
-    if (user == null) return;
-    setState(() => _watchingAd = true);
-    final ads = ref.read(adsServiceProvider);
-    final messenger = ScaffoldMessenger.of(context);
-    try {
-      final earned = await ads.showRewarded();
-      if (!mounted) return;
-      if (!earned) {
-        messenger.showSnackBar(
-          SnackBar(content: Text(context.tr('watchAdNotReady'))),
-        );
-        return;
-      }
-      final coins = await ref
-          .read(userRepositoryProvider)
-          .grantAdAttackCoin(user.id);
-      if (!mounted) return;
-      if (coins > 0) {
-        setState(() => _adRewardsClaimed += 1);
-        messenger.showSnackBar(
-          SnackBar(content: Text(context.tr('adAttackUnlocked'))),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _watchingAd = false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final target = widget.target;
@@ -3647,30 +3398,6 @@ class _ArenaTaskPickerSheetState extends ConsumerState<_ArenaTaskPickerSheet> {
                 ],
               ),
             ),
-            if (_canWatchAdForCoin()) ...[
-              const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: _watchingAd ? null : _watchAdForCoin,
-                  icon: _watchingAd
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.play_circle_outline, size: 18),
-                  label: Text(context.tr('watchAdToAttack')),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFFFFD54F),
-                    side: BorderSide(
-                      color: const Color(0xFFFFC107).withAlpha(120),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                ),
-              ),
-            ],
             const SizedBox(height: 16),
           ] else ...[
             Row(
@@ -3881,12 +3608,13 @@ class _ArenaTaskCard extends StatelessWidget {
 
 enum _ArenaBattlePhase { idle, attacking, hit, result }
 
-class _ArenaBattleDialog extends StatefulWidget {
+class _ArenaBattleDialog extends ConsumerStatefulWidget {
   final UserModel? attacker;
   final UserModel? target;
   final TaskModel task;
   final bool attackerIsKO;
   final bool noAttacksLeft;
+  final String currentUserId;
   final Future<int> Function() onComplete;
 
   const _ArenaBattleDialog({
@@ -3895,19 +3623,23 @@ class _ArenaBattleDialog extends StatefulWidget {
     required this.task,
     required this.attackerIsKO,
     this.noAttacksLeft = false,
+    required this.currentUserId,
     required this.onComplete,
   });
 
   @override
-  State<_ArenaBattleDialog> createState() => _ArenaBattleDialogState();
+  ConsumerState<_ArenaBattleDialog> createState() => _ArenaBattleDialogState();
 }
 
-class _ArenaBattleDialogState extends State<_ArenaBattleDialog>
+class _ArenaBattleDialogState extends ConsumerState<_ArenaBattleDialog>
     with SingleTickerProviderStateMixin {
   _ArenaBattlePhase _phase = _ArenaBattlePhase.idle;
   late AnimationController _shakeCtrl;
   String _resultMessage = '';
   bool _loading = false;
+  // Bonus-coin ad state (offer to double the coin reward once per battle).
+  bool _watchingAd = false;
+  bool _bonusClaimed = false;
 
   /// True when no damage will be dealt to an opponent — i.e. there is no
   /// target, the attacker is K.O., or the daily attack cap is reached. In
@@ -3930,6 +3662,56 @@ class _ArenaBattleDialogState extends State<_ArenaBattleDialog>
   void dispose() {
     _shakeCtrl.dispose();
     super.dispose();
+  }
+
+  /// Whether we can offer the "watch ad for +1 bonus coin" option: only the
+  /// current user (not when completing on someone else's behalf), only if ads
+  /// can be offered, and only while the daily rewarded-ad cap isn't reached.
+  bool _canWatchBonusCoin() {
+    final attacker = widget.attacker;
+    if (attacker == null) return false;
+    if (attacker.id != widget.currentUserId) return false;
+    if (_bonusClaimed) return false;
+    if (!ref.read(adsServiceProvider).canOfferReward) return false;
+    final todayStr = DateTime.now().toIso8601String().substring(0, 10);
+    final adsToday = attacker.lastRewardedDate == todayStr
+        ? attacker.todayRewardedAds
+        : 0;
+    return adsToday < kMaxDailyRewardedAds;
+  }
+
+  Future<void> _watchAdForBonusCoin() async {
+    final attacker = widget.attacker;
+    if (attacker == null) return;
+    setState(() => _watchingAd = true);
+    final ads = ref.read(adsServiceProvider);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final earned = await ads.showRewarded();
+      if (!mounted) return;
+      if (!earned) {
+        messenger.showSnackBar(
+          SnackBar(content: Text(context.tr('watchAdNotReady'))),
+        );
+        return;
+      }
+      final coins = await ref
+          .read(userRepositoryProvider)
+          .addRewardCoins(attacker.id);
+      if (!mounted) return;
+      if (coins > 0) {
+        setState(() => _bonusClaimed = true);
+        messenger.showSnackBar(
+          SnackBar(content: Text(context.tr('bonusCoinAdded'))),
+        );
+      } else {
+        messenger.showSnackBar(
+          SnackBar(content: Text(context.tr('watchAdCapReached'))),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _watchingAd = false);
+    }
   }
 
   Future<void> _startBattle() async {
@@ -4298,6 +4080,47 @@ class _ArenaBattleDialogState extends State<_ArenaBattleDialog>
                     ),
                   ),
                   const SizedBox(height: 20),
+                  // Optional: watch a rewarded ad to earn +1 bonus coin.
+                  if (_bonusClaimed)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Text(
+                        context.tr('bonusCoinAdded'),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Color(0xFFFFD54F),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    )
+                  else if (_canWatchBonusCoin())
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: OutlinedButton.icon(
+                        onPressed: _watchingAd ? null : _watchAdForBonusCoin,
+                        icon: _watchingAd
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.play_circle_outline, size: 18),
+                        label: Text(context.tr('watchAdBonusCoin')),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFFFFD54F),
+                          side: BorderSide(
+                            color: const Color(0xFFFFC107).withAlpha(120),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                        ),
+                      ),
+                    ),
                   ElevatedButton(
                     onPressed: () => Navigator.of(context).pop(),
                     child: Text(context.tr('continueBtn')),

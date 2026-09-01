@@ -31,7 +31,7 @@ final userDisplayNameProvider =
 /// explicitly selects "All time". Every other feature (history feed,
 /// notifications, arena ranking, scoped stats) uses a bounded query instead.
 final leagueHistoryProvider =
-    StreamProvider.family<List<TaskEventModel>, String>((ref, leagueId) {
+    StreamProvider.autoDispose.family<List<TaskEventModel>, String>((ref, leagueId) {
   final uid = ref.watch(authStateProvider).valueOrNull?.uid;
   if (uid == null) return Stream.value([]);
   return ref.watch(taskEventRepositoryProvider).watchEvents(leagueId);
@@ -113,7 +113,7 @@ final historyFilterProvider =
 /// (when set) and a row limit **server-side** so the feed never reads the whole
 /// collection. Member/text filtering is done client-side on this reduced set.
 final historyEventsProvider =
-    StreamProvider.family<List<TaskEventModel>, String>((ref, leagueId) {
+    StreamProvider.autoDispose.family<List<TaskEventModel>, String>((ref, leagueId) {
   final uid = ref.watch(authStateProvider).valueOrNull?.uid;
   if (uid == null) return Stream.value([]);
   final filter = ref.watch(historyFilterProvider(leagueId));
@@ -141,7 +141,7 @@ final historyEventsProvider =
 
 /// Events already filtered client-side.
 final filteredHistoryProvider =
-    Provider.family<AsyncValue<List<TaskEventModel>>, String>((ref, leagueId) {
+    Provider.autoDispose.family<AsyncValue<List<TaskEventModel>>, String>((ref, leagueId) {
   final allAsync = ref.watch(historyEventsProvider(leagueId));
   final filter = ref.watch(historyFilterProvider(leagueId));
 
@@ -176,7 +176,7 @@ final filteredHistoryProvider =
 /// Bounded to the last [kNotifWindowDays] days so it never reads the whole
 /// collection — old attacks are not relevant as notifications.
 final attackNotificationsProvider =
-    StreamProvider.family<List<TaskEventModel>, String>((ref, leagueId) {
+    StreamProvider.autoDispose.family<List<TaskEventModel>, String>((ref, leagueId) {
   final uid = ref.watch(authStateProvider).valueOrNull?.uid;
   if (uid == null) return Stream.value([]);
   final since = DateTime.now().subtract(const Duration(days: kNotifWindowDays));
@@ -204,7 +204,7 @@ final notifSeenProvider =
 
 /// Count of unseen attack events for the current user in this league.
 final unseenAttackCountProvider =
-    Provider.family<AsyncValue<int>, String>((ref, leagueId) {
+    Provider.autoDispose.family<AsyncValue<int>, String>((ref, leagueId) {
   final notifAsync = ref.watch(attackNotificationsProvider(leagueId));
   final seenAt = ref.watch(notifSeenProvider(leagueId));
 
