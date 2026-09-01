@@ -6,7 +6,7 @@ class UserRepository {
   final FirebaseFirestore _db;
 
   UserRepository({FirebaseFirestore? db})
-      : _db = db ?? FirebaseFirestore.instance;
+    : _db = db ?? FirebaseFirestore.instance;
 
   CollectionReference<Map<String, dynamic>> get _users =>
       _db.collection('users');
@@ -32,18 +32,25 @@ class UserRepository {
   }
 
   /// Permanently delete all Firestore data belonging to [uid]: removes the user
-  /// from every league they are a member of, then deletes the user document.
+  /// from every league they are a member of, deletes leagues they own so they
+  /// cannot become orphaned, then deletes the user document.
   /// Best-effort — used by the account deletion flow.
   Future<void> deleteUserData(String uid) async {
-    // Remove the user from all leagues they belong to.
+    // Remove the user from joined leagues. Owned leagues must be deleted: the
+    // owner cannot leave without transferring ownership, and this app does not
+    // currently support ownership transfer.
     final leagues = await _db
         .collection('leagues')
         .where('memberIds', arrayContains: uid)
         .get();
     for (final doc in leagues.docs) {
-      await doc.reference.update({
-        'memberIds': FieldValue.arrayRemove([uid]),
-      });
+      if (doc.data()['ownerId'] == uid) {
+        await doc.reference.delete();
+      } else {
+        await doc.reference.update({
+          'memberIds': FieldValue.arrayRemove([uid]),
+        });
+      }
     }
     // Delete the user document itself.
     await _users.doc(uid).delete();
@@ -60,8 +67,7 @@ class UserRepository {
 
       final user = UserModel.fromFirestore(snap.data()!, snap.id);
       final todayStr = _todayStr();
-      final dayCoins =
-          user.lastCoinDate == todayStr ? user.todayCoins : 0;
+      final dayCoins = user.lastCoinDate == todayStr ? user.todayCoins : 0;
 
       if (dayCoins >= kMaxDailyCoins) return;
 
@@ -89,8 +95,9 @@ class UserRepository {
 
       final user = UserModel.fromFirestore(snap.data()!, snap.id);
       final todayStr = _todayStr();
-      final adsToday =
-          user.lastRewardedDate == todayStr ? user.todayRewardedAds : 0;
+      final adsToday = user.lastRewardedDate == todayStr
+          ? user.todayRewardedAds
+          : 0;
 
       if (adsToday >= kMaxDailyRewardedAds) return;
 
@@ -119,8 +126,9 @@ class UserRepository {
 
       final user = UserModel.fromFirestore(snap.data()!, snap.id);
       final todayStr = _todayStr();
-      final claimed =
-          user.lastBonusAttackDate == todayStr ? user.bonusAttacksToday : 0;
+      final claimed = user.lastBonusAttackDate == todayStr
+          ? user.bonusAttacksToday
+          : 0;
 
       if (claimed >= kMaxAdAttacks) return;
 
@@ -156,8 +164,10 @@ class UserRepository {
       final attackerRef = _users.doc(attackerUid);
       final attackerSnap = await tx.get(attackerRef);
       if (!attackerSnap.exists) return;
-      final attacker =
-          UserModel.fromFirestore(attackerSnap.data()!, attackerSnap.id);
+      final attacker = UserModel.fromFirestore(
+        attackerSnap.data()!,
+        attackerSnap.id,
+      );
 
       final attacks = attacker.lastAttackDate == todayStr
           ? attacker.todayAttacks
@@ -168,8 +178,7 @@ class UserRepository {
       final targetRef = _users.doc(targetUid);
       final targetSnap = await tx.get(targetRef);
       if (!targetSnap.exists) return;
-      final target =
-          UserModel.fromFirestore(targetSnap.data()!, targetSnap.id);
+      final target = UserModel.fromFirestore(targetSnap.data()!, targetSnap.id);
 
       final shieldExpiry = target.shieldByLeague[leagueId];
       if (shieldExpiry != null &&
@@ -249,7 +258,10 @@ class UserRepository {
       final snap = await tx.get(ref);
       if (!snap.exists) return;
       final user = UserModel.fromFirestore(snap.data()!, snap.id);
-      if (user.unlockedSkins.contains(skin)) { ok = true; return; } // already owned
+      if (user.unlockedSkins.contains(skin)) {
+        ok = true;
+        return;
+      } // already owned
       if (user.coins < cost) return; // not enough
       final newUnlocked = {...user.unlockedSkins, skin};
       tx.update(ref, {
@@ -276,8 +288,10 @@ class UserRepository {
       if (!snap.exists) return;
       final user = UserModel.fromFirestore(snap.data()!, snap.id);
       if (user.coins < cost) return;
-      final expiry =
-          DateTime.now().add(Duration(hours: hours)).toUtc().toIso8601String();
+      final expiry = DateTime.now()
+          .add(Duration(hours: hours))
+          .toUtc()
+          .toIso8601String();
       tx.update(ref, {
         'coins': user.coins - cost,
         'shieldByLeague.$leagueId': expiry,
