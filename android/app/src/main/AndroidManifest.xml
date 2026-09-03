@@ -1,4 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Required for Firebase, AdMob and any network access in release builds.
+         (In debug/profile this is added automatically by the Flutter tool.) -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="Task League"
         android:name="${applicationName}"
