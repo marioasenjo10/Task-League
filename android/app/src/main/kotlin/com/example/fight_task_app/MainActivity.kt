@@ -1,4 +1,4 @@
-package com.example.fight_task_app
+package com.masen.taskfight
 
 import io.flutter.embedding.android.FlutterActivity
 
