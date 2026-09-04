@@ -8,42 +8,6 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:553825765711:android:8a1f1d2dbdec03adfa5d3a",
-        "android_client_info": {
-          "package_name": "com.example.fight_task_app"
-        }
-      },
-      "oauth_client": [
-        {
-          "client_id": "553825765711-fnrmfath78ug8scdjb6n388guot2geb1.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
-      "api_key": [
-        {
-          "current_key": "AIzaSyBbYQRrAIZP_jTYqSwCT1GxuuLCb7Zz92I"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "553825765711-fnrmfath78ug8scdjb6n388guot2geb1.apps.googleusercontent.com",
-              "client_type": 3
-            },
-            {
-              "client_id": "553825765711-ba61bpruhfphva2pcu98gbhuo9f1btt3.apps.googleusercontent.com",
-              "client_type": 2,
-              "ios_info": {
-                "bundle_id": "com.masen.taskfight"
-              }
-            }
-          ]
-        }
-      }
-    },
-    {
-      "client_info": {
         "mobilesdk_app_id": "1:553825765711:android:752f6ca3142461cffa5d3a",
         "android_client_info": {
           "package_name": "com.masen.taskfight"
@@ -56,6 +20,14 @@
           "android_info": {
             "package_name": "com.masen.taskfight",
             "certificate_hash": "5db24b3d0d890833bf06b7748a169f5525fc6e50"
+          }
+        },
+        {
+          "client_id": "553825765711-fh9m01nv8hn8cafncshlj9movuhk5pom.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.masen.taskfight",
+            "certificate_hash": "af8184f77863c264e72cfb6a9d9185f272c519a3"
           }
         },
         {
