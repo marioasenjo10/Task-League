@@ -19,5 +19,10 @@ final googleSignInClient = kIsWeb
         scopes: [gcal.CalendarApi.calendarEventsScope],
       )
     : GoogleSignIn(
+        // Pass the WEB client id as serverClientId so Google returns a valid
+        // idToken for Firebase Auth. Without it, sign-in on Android obtains the
+        // account but idToken is null, so signInWithCredential silently fails
+        // and the user is bounced back to the login screen.
+        serverClientId: _webClientId,
         scopes: [gcal.CalendarApi.calendarEventsScope],
       );
