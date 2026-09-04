@@ -76,7 +76,18 @@ service cloud.firestore {
 
         function validUserUpdate() {
           let changed = request.resource.data.diff(resource.data).affectedKeys();
-          return validUserKeys()
+          // Validate only the fields being CHANGED (not the whole document).
+          // This prevents adding arbitrary new fields while tolerating any
+          // legacy/extra fields already present on older documents, which
+          // would otherwise make every self-update fail under a whole-document
+          // hasOnly() check.
+          return changed.hasOnly([
+               'name', 'email', 'avatarUrl', 'characterSkin', 'calendarSync',
+               'coins', 'todayCoins', 'lastCoinDate', 'todayRewardedAds',
+               'lastRewardedDate', 'hpByLeague', 'lastHpResetByLeague',
+               'todayAttacks', 'lastAttackDate', 'bonusAttacksToday',
+               'lastBonusAttackDate', 'unlockedSkins', 'shieldByLeague'
+             ])
              && (!changed.hasAny(['name'])
                || request.resource.data.name is string)
              && (!changed.hasAny(['email'])
@@ -146,11 +157,20 @@ service cloud.firestore {
                     && validNewUser();
       allow delete: if signedIn() && request.auth.uid == userId;
 
-      allow update: if signedIn() && validUserUpdate() && (
-        request.auth.uid == userId
+      allow update: if signedIn() && (
+        // Self-update: full schema validation on the whole document.
+        (request.auth.uid == userId && validUserUpdate())
         ||
-        request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['hpByLeague', 'lastHpResetByLeague'])
+        // Cross-user combat write: an attacker may ONLY touch the two HP maps
+        // on someone else's profile. We validate just the changed fields here
+        // (NOT the victim's full schema) so an attack never depends on the
+        // target document being schema-perfect.
+        (
+          request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['hpByLeague', 'lastHpResetByLeague'])
+          && request.resource.data.hpByLeague is map
+          && request.resource.data.lastHpResetByLeague is map
+        )
       );
     }
 

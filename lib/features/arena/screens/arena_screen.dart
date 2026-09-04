@@ -2600,9 +2600,16 @@ Future<void> showArenaAttackDialogWithTask(
   final currentUser = await UserRepository().getUser(currentUid);
   // All league members INCLUDING the current user, so the doer can be changed
   // (default: the current user).
-  final allMembers = List<UserModel>.from(
-    ref.read(leagueMembersProvider(leagueId)).valueOrNull ?? const [],
-  );
+  //
+  // Await the stream's first value instead of reading valueOrNull: on a fresh
+  // login the members StreamProvider may still be loading, in which case
+  // valueOrNull would be empty and the opponent picker would wrongly show only
+  // "none — just earn coins & XP".
+  List<UserModel> loadedMembers = const [];
+  try {
+    loadedMembers = await ref.read(leagueMembersProvider(leagueId).future);
+  } catch (_) {}
+  final allMembers = List<UserModel>.from(loadedMembers);
   if (currentUser != null && !allMembers.any((m) => m.id == currentUid)) {
     allMembers.insert(0, currentUser);
   }
