@@ -727,23 +727,33 @@ class _LanguageRow extends ConsumerWidget {
           Text(context.tr('language'),
               style: const TextStyle(fontSize: 14, color: Colors.white70)),
         ]),
-        Row(children: [
-          _LangBtn(
-            label: 'EN',
-            selected: !isEs,
-            onTap: () => ref
-                .read(localeProvider.notifier)
-                .setLocale(const Locale('en')),
+        Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFF252540),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.white.withAlpha(20)),
           ),
-          const SizedBox(width: 8),
-          _LangBtn(
-            label: 'ES',
-            selected: isEs,
-            onTap: () => ref
-                .read(localeProvider.notifier)
-                .setLocale(const Locale('es')),
+          padding: const EdgeInsets.all(3),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _LangBtn(
+                label: 'EN',
+                selected: !isEs,
+                onTap: () => ref
+                    .read(localeProvider.notifier)
+                    .setLocale(const Locale('en')),
+              ),
+              _LangBtn(
+                label: 'ES',
+                selected: isEs,
+                onTap: () => ref
+                    .read(localeProvider.notifier)
+                    .setLocale(const Locale('es')),
+              ),
+            ],
           ),
-        ]),
+        ),
       ],
     );
   }
@@ -759,24 +769,18 @@ class _LangBtn extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
+      behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         decoration: BoxDecoration(
-          color: selected
-              ? const Color(0xFF6C3CE1)
-              : Colors.white.withAlpha(15),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: selected
-                ? const Color(0xFF6C3CE1)
-                : Colors.white.withAlpha(30),
-          ),
+          color: selected ? const Color(0xFF6C3CE1) : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
         ),
         child: Text(
           label,
           style: TextStyle(
-            fontSize: 12,
+            fontSize: 13,
             fontWeight: selected ? FontWeight.bold : FontWeight.normal,
             color: selected ? Colors.white : Colors.white54,
           ),
