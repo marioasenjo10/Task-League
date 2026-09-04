@@ -15,6 +15,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "553825765711-9sb5fq9je9gvlv46b4jclthbrnrgfifq.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.masen.taskfight",
+            "certificate_hash": "cfea313c9e147aa1c51356fd9b9599ef33edc362"
+          }
+        },
+        {
           "client_id": "553825765711-ajpdjqth246a2cna93t28jd54c3pgvaj.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
