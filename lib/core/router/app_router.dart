@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -19,6 +22,20 @@ class AppRouter {
   static final GoRouter router = GoRouter(
     navigatorKey: rootNavigatorKey,
     initialLocation: '/login',
+    // Rebuild the router whenever the Firebase auth session changes (login or
+    // sign out) so [redirect] runs again and moves the user to the right place.
+    refreshListenable: _GoRouterRefreshStream(
+      FirebaseAuth.instance.authStateChanges(),
+    ),
+    // Global auth guard. When the session ends (e.g. Sign out) the user is sent
+    // to /login from any screen; when logged in they can't stay on /login.
+    redirect: (context, state) {
+      final loggedIn = FirebaseAuth.instance.currentUser != null;
+      final loggingIn = state.matchedLocation == '/login';
+      if (!loggedIn) return loggingIn ? null : '/login';
+      if (loggingIn) return '/home';
+      return null;
+    },
     routes: [
       GoRoute(
         path: '/login',
@@ -95,4 +112,21 @@ class AppRouter {
       body: Center(child: Text('Page not found: ${state.error}')),
     ),
   );
+}
+
+/// Bridges a [Stream] (Firebase auth state) to a [Listenable] so GoRouter can
+/// re-evaluate its `redirect` every time the stream emits.
+class _GoRouterRefreshStream extends ChangeNotifier {
+  _GoRouterRefreshStream(Stream<dynamic> stream) {
+    notifyListeners();
+    _subscription = stream.asBroadcastStream().listen((_) => notifyListeners());
+  }
+
+  late final StreamSubscription<dynamic> _subscription;
+
+  @override
+  void dispose() {
+    _subscription.cancel();
+    super.dispose();
+  }
 }
