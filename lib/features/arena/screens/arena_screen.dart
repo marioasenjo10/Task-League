@@ -2597,21 +2597,27 @@ Future<void> showArenaAttackDialogWithTask(
   final currentUid = ref.read(authStateProvider).valueOrNull?.uid ?? '';
   if (currentUid.isEmpty) return;
 
-  final currentUser = await UserRepository().getUser(currentUid);
   // All league members INCLUDING the current user, so the doer can be changed
   // (default: the current user).
   //
-  // Await the stream's first value instead of reading valueOrNull: on a fresh
-  // login the members StreamProvider may still be loading, in which case
-  // valueOrNull would be empty and the opponent picker would wrongly show only
-  // "none — just earn coins & XP".
-  List<UserModel> loadedMembers = const [];
-  try {
-    loadedMembers = await ref.read(leagueMembersProvider(leagueId).future);
-  } catch (_) {}
-  final allMembers = List<UserModel>.from(loadedMembers);
-  if (currentUser != null && !allMembers.any((m) => m.id == currentUid)) {
-    allMembers.insert(0, currentUser);
+  // We deliberately do NOT await leagueMembersProvider.future here: that
+  // provider merges per-member snapshot streams and emits its FIRST value as
+  // soon as the FIRST member document arrives. On a cold start that resolves
+  // with a partial list (often just the current user), which left the picker
+  // with no opponents and no "who did it" selector. Instead we fetch every
+  // member directly by id and wait for all of them.
+  final repo = UserRepository();
+  final fetched = await Future.wait(
+    league.memberIds.map((uid) => repo.getUser(uid)),
+  );
+  final allMembers = fetched.whereType<UserModel>().toList();
+  // Ensure the current user is present and appears first (default doer).
+  final meIndex = allMembers.indexWhere((m) => m.id == currentUid);
+  if (meIndex > 0) {
+    allMembers.insert(0, allMembers.removeAt(meIndex));
+  } else if (meIndex == -1) {
+    final me = await repo.getUser(currentUid);
+    if (me != null) allMembers.insert(0, me);
   }
 
   if (!context.mounted) return;
