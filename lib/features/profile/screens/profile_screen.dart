@@ -1,6 +1,7 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart'
+    show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -176,14 +177,9 @@ class _ProfileContent extends ConsumerWidget {
                     color: Colors.white38,
                   )),
           const SizedBox(height: 12),
-          // IAP is mobile-only; never mount the premium card on web/desktop,
-          // where InAppPurchase.instance is unsupported and touching it during
-          // initState crashes the whole screen.
-          if (!kIsWeb) ...[
-            _UnlockAllSkinsCard(user: user),
-            const SizedBox(height: 12),
-          ],
           _SkinShop(user: user),
+          const SizedBox(height: 12),
+          _UnlockAllSkinsCard(user: user),
           const SizedBox(height: 32),
 
           // Sign out
@@ -302,9 +298,19 @@ class _UnlockAllSkinsCardState extends ConsumerState<_UnlockAllSkinsCard> {
   bool _busy = false;
   StreamSubscription<PurchaseResult>? _sub;
 
+  /// IAP only works on Android/iOS. On web/desktop we still render the card as
+  /// a disabled preview, but must NEVER touch [purchaseServiceProvider] (it
+  /// builds InAppPurchase.instance, which is unsupported off-mobile and crashes
+  /// the screen).
+  bool get _canPurchase =>
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS);
+
   @override
   void initState() {
     super.initState();
+    if (!_canPurchase) return;
     final service = ref.read(purchaseServiceProvider);
     // Load the store product so we can show its localized price.
     service.loadProducts().then((_) {
@@ -364,37 +370,36 @@ class _UnlockAllSkinsCardState extends ConsumerState<_UnlockAllSkinsCard> {
 
   @override
   Widget build(BuildContext context) {
-    final service = ref.read(purchaseServiceProvider);
-    // Hide entirely once already owned or when IAP isn't available here.
+    // Hide entirely once already owned.
     if (widget.user.allSkinsUnlocked) return const SizedBox.shrink();
-    if (!service.isSupported) return const SizedBox.shrink();
 
-    final price = service.unlockAllPrice;
+    // On web/desktop show the card but disabled (preview only) and never read
+    // the purchase service. On mobile it's fully interactive.
+    final price =
+        _canPurchase ? ref.read(purchaseServiceProvider).unlockAllPrice : null;
+    final disabled = !_canPurchase || _busy;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        gradient: const LinearGradient(
-          colors: [Color(0xFF6C3CE1), Color(0xFF3A1C71)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        border: Border.all(color: const Color(0xFFB39DDB), width: 1),
+        color: const Color(0xFF1E1E30),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFF6C3CE1).withAlpha(80)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Text('✨', style: TextStyle(fontSize: 20)),
+              const Icon(Icons.auto_awesome,
+                  size: 18, color: Color(0xFFB39DDB)),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   context.tr('unlockAllTitle'),
                   style: const TextStyle(
                     color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
                   ),
                 ),
               ),
@@ -403,17 +408,21 @@ class _UnlockAllSkinsCardState extends ConsumerState<_UnlockAllSkinsCard> {
           const SizedBox(height: 6),
           Text(
             context.tr('unlockAllDesc'),
-            style: const TextStyle(color: Colors.white70, fontSize: 12),
+            style: const TextStyle(color: Colors.white54, fontSize: 12),
           ),
           const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
                 child: ElevatedButton(
-                  onPressed: _busy ? null : _buy,
+                  onPressed: disabled ? null : _buy,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: const Color(0xFF3A1C71),
+                    backgroundColor: const Color(0xFF6C3CE1),
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor:
+                        const Color(0xFF6C3CE1).withAlpha(90),
+                    disabledForegroundColor: Colors.white70,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -430,20 +439,19 @@ class _UnlockAllSkinsCardState extends ConsumerState<_UnlockAllSkinsCard> {
                                   .trArgs('unlockAllCta', {'price': price})
                               : context.tr('unlockAllCtaNoPrice'),
                           style:
-                              const TextStyle(fontWeight: FontWeight.bold),
+                              const TextStyle(fontWeight: FontWeight.w600),
                         ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 4),
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(
-              onPressed: _busy ? null : _restore,
+              onPressed: disabled ? null : _restore,
               child: Text(
                 context.tr('restorePurchases'),
-                style: const TextStyle(color: Colors.white70, fontSize: 12),
+                style: const TextStyle(color: Colors.white38, fontSize: 12),
               ),
             ),
           ),
