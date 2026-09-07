@@ -32,7 +32,9 @@ service cloud.firestore {
                'bonusAttacksToday',
                'lastBonusAttackDate',
                'unlockedSkins',
-               'shieldByLeague'
+               'shieldByLeague',
+               'lastShieldAdDate',
+               'allSkinsUnlocked'
              ]);
     }
 
@@ -86,7 +88,8 @@ service cloud.firestore {
                'coins', 'todayCoins', 'lastCoinDate', 'todayRewardedAds',
                'lastRewardedDate', 'hpByLeague', 'lastHpResetByLeague',
                'todayAttacks', 'lastAttackDate', 'bonusAttacksToday',
-               'lastBonusAttackDate', 'unlockedSkins', 'shieldByLeague'
+               'lastBonusAttackDate', 'unlockedSkins', 'shieldByLeague',
+               'lastShieldAdDate'
              ])
              && (!changed.hasAny(['name'])
                || request.resource.data.name is string)
@@ -132,7 +135,9 @@ service cloud.firestore {
              && (!changed.hasAny(['unlockedSkins'])
                || request.resource.data.unlockedSkins is list)
              && (!changed.hasAny(['shieldByLeague'])
-               || request.resource.data.shieldByLeague is map);
+               || request.resource.data.shieldByLeague is map)
+             && (!changed.hasAny(['lastShieldAdDate'])
+               || request.resource.data.lastShieldAdDate is string);
         }
 
     // ── App configuration (maintenance mode, etc.) ─────────────────────────

@@ -2223,17 +2223,58 @@ Future<void> _showBuyShieldDialog(
           ),
           const SizedBox(height: 16),
           ...kShieldOptions.map((opt) {
-            final cost = opt['cost'] as int;
             final hours = opt['hours'] as int;
             final label = opt['label'] as String;
-            final canAfford = user.coins >= cost;
+            final isAd = opt['ad'] == true;
+            final cost = isAd ? 0 : opt['cost'] as int;
+            final ads = ref.read(adsServiceProvider);
+            final todayStr =
+                DateTime.now().toIso8601String().substring(0, 10);
+            final adUsedToday = user.lastShieldAdDate == todayStr;
+            final available = isAd
+                ? (ads.canOfferReward && !adUsedToday)
+                : user.coins >= cost;
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: InkWell(
                 borderRadius: BorderRadius.circular(10),
-                onTap: canAfford
+                onTap: available
                     ? () async {
                         Navigator.of(ctx).pop();
+                        if (isAd) {
+                          final earned = await ads.showRewarded();
+                          if (!context.mounted) return;
+                          if (!earned) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(context.tr('watchAdNotReady')),
+                                backgroundColor: Colors.redAccent,
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                            return;
+                          }
+                          await UserRepository().buyShield(
+                            uid: user.id,
+                            leagueId: leagueId,
+                            hours: hours,
+                            cost: 0,
+                            viaAd: true,
+                          );
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                context.trArgs('shieldActiveFor', {
+                                  'duration': label,
+                                }),
+                              ),
+                              backgroundColor: const Color(0xFF1565C0),
+                              duration: const Duration(seconds: 2),
+                            ),
+                          );
+                          return;
+                        }
                         final ok = await UserRepository().buyShield(
                           uid: user.id,
                           leagueId: leagueId,
@@ -2264,12 +2305,12 @@ Future<void> _showBuyShieldDialog(
                     vertical: 10,
                   ),
                   decoration: BoxDecoration(
-                    color: canAfford
+                    color: available
                         ? const Color(0xFF1565C0).withAlpha(30)
                         : Colors.white.withAlpha(5),
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                      color: canAfford
+                      color: available
                           ? const Color(0xFF42A5F5).withAlpha(120)
                           : Colors.white12,
                     ),
@@ -2281,23 +2322,42 @@ Future<void> _showBuyShieldDialog(
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
-                          color: canAfford ? Colors.white : Colors.white38,
+                          color: available ? Colors.white : Colors.white38,
                         ),
                       ),
                       const Spacer(),
-                      Text(
-                        '🪙$cost',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: canAfford
-                              ? const Color(0xFFFFB74D)
-                              : Colors.white24,
+                      if (isAd)
+                        Text(
+                          adUsedToday
+                              ? '✅ ${context.tr('shieldAdUsed')}'
+                              : '📺 ${context.tr('watchAd')}',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: available
+                                ? const Color(0xFF66BB6A)
+                                : Colors.white24,
+                          ),
+                        )
+                      else ...[
+                        Text(
+                          '🪙$cost',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: available
+                                ? const Color(0xFFFFB74D)
+                                : Colors.white24,
+                          ),
                         ),
-                      ),
-                      if (!canAfford) ...[
-                        const SizedBox(width: 6),
-                        const Icon(Icons.lock, size: 13, color: Colors.white24),
+                        if (!available) ...[
+                          const SizedBox(width: 6),
+                          const Icon(
+                            Icons.lock,
+                            size: 13,
+                            color: Colors.white24,
+                          ),
+                        ],
                       ],
                     ],
                   ),

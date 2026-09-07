@@ -28,8 +28,10 @@ const Map<String, int> kSkinCosts = {
   'thunderman':    50,
 };
 
-/// Shield options: display label → {hours, cost}.
+/// Shield options: display label → {hours, cost} or {hours, ad: true}.
+/// The `ad` option is granted by watching a rewarded ad instead of paying coins.
 const List<Map<String, dynamic>> kShieldOptions = [
+  {'label': '2h',  'hours': 2,  'ad': true},
   {'label': '8h',  'hours': 8,  'cost': 10},
   {'label': '16h', 'hours': 16, 'cost': 18},
   {'label': '24h', 'hours': 24, 'cost': 40},
@@ -73,6 +75,14 @@ class UserModel extends Equatable {
   /// If absent or in the past, no shield is active.
   final Map<String, String> shieldByLeague;
 
+  /// ISO-8601 date string of the last day the user claimed the ad-for-shield
+  /// reward. Limits the free ad shield to once per day.
+  final String lastShieldAdDate;
+
+  /// Whether the user bought the premium "unlock all skins" IAP. Set only by
+  /// the backend (Cloud Function) after verifying the purchase receipt.
+  final bool allSkinsUnlocked;
+
   const UserModel({
     required this.id,
     required this.name,
@@ -93,6 +103,8 @@ class UserModel extends Equatable {
     this.lastBonusAttackDate = '',
     this.unlockedSkins = const {'warrior'},
     this.shieldByLeague = const {},
+    this.lastShieldAdDate = '',
+    this.allSkinsUnlocked = false,
   });
 
   // ── Convenience helpers ───────────────────────────────────────────────────
@@ -124,6 +136,8 @@ class UserModel extends Equatable {
       unlockedSkins: Set<String>.from(
           (data['unlockedSkins'] as List?)?.cast<String>() ?? ['warrior']),
       shieldByLeague: Map<String, String>.from(data['shieldByLeague'] ?? {}),
+      lastShieldAdDate: data['lastShieldAdDate'] ?? '',
+      allSkinsUnlocked: data['allSkinsUnlocked'] ?? false,
     );
   }
 
@@ -157,6 +171,8 @@ class UserModel extends Equatable {
         'lastBonusAttackDate': lastBonusAttackDate,
         'unlockedSkins': unlockedSkins.toList(),
         'shieldByLeague': shieldByLeague,
+        'lastShieldAdDate': lastShieldAdDate,
+        'allSkinsUnlocked': allSkinsUnlocked,
       };
 
   UserModel copyWith({
@@ -179,6 +195,8 @@ class UserModel extends Equatable {
     String? lastBonusAttackDate,
     Set<String>? unlockedSkins,
     Map<String, String>? shieldByLeague,
+    String? lastShieldAdDate,
+    bool? allSkinsUnlocked,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -200,6 +218,8 @@ class UserModel extends Equatable {
       lastBonusAttackDate: lastBonusAttackDate ?? this.lastBonusAttackDate,
       unlockedSkins: unlockedSkins ?? this.unlockedSkins,
       shieldByLeague: shieldByLeague ?? this.shieldByLeague,
+      lastShieldAdDate: lastShieldAdDate ?? this.lastShieldAdDate,
+      allSkinsUnlocked: allSkinsUnlocked ?? this.allSkinsUnlocked,
     );
   }
 
@@ -212,5 +232,7 @@ class UserModel extends Equatable {
         todayAttacks, lastAttackDate,
         bonusAttacksToday, lastBonusAttackDate,
         unlockedSkins, shieldByLeague,
+        lastShieldAdDate,
+        allSkinsUnlocked,
       ];
 }

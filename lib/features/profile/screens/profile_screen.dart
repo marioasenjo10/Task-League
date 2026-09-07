@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -11,6 +13,7 @@ import '../providers/calendar_sync_provider.dart';
 import '../../../core/l10n/app_localizations.dart';
 import '../../../core/l10n/locale_provider.dart';
 import '../../../core/services/ads_service.dart';
+import '../../../core/services/purchase_service.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -172,6 +175,8 @@ class _ProfileContent extends ConsumerWidget {
                     color: Colors.white38,
                   )),
           const SizedBox(height: 12),
+          _UnlockAllSkinsCard(user: user),
+          const SizedBox(height: 12),
           _SkinShop(user: user),
           const SizedBox(height: 32),
 
@@ -276,6 +281,173 @@ class _DeleteAccountButtonState extends ConsumerState<_DeleteAccountButton> {
 }
 
 // ---------------------------------------------------------------------------
+// Premium: unlock all skins via a one-time in-app purchase
+// ---------------------------------------------------------------------------
+class _UnlockAllSkinsCard extends ConsumerStatefulWidget {
+  final UserModel user;
+  const _UnlockAllSkinsCard({required this.user});
+
+  @override
+  ConsumerState<_UnlockAllSkinsCard> createState() =>
+      _UnlockAllSkinsCardState();
+}
+
+class _UnlockAllSkinsCardState extends ConsumerState<_UnlockAllSkinsCard> {
+  bool _busy = false;
+  StreamSubscription<PurchaseResult>? _sub;
+
+  @override
+  void initState() {
+    super.initState();
+    final service = ref.read(purchaseServiceProvider);
+    // Load the store product so we can show its localized price.
+    service.loadProducts().then((_) {
+      if (mounted) setState(() {});
+    });
+    _sub = service.results.listen(_onResult);
+  }
+
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
+  }
+
+  void _onResult(PurchaseResult result) {
+    if (!mounted) return;
+    setState(() => _busy = result == PurchaseResult.pending);
+    final messenger = ScaffoldMessenger.of(context);
+    switch (result) {
+      case PurchaseResult.success:
+        messenger.showSnackBar(SnackBar(
+          content: Text(context.tr('unlockAllSuccess')),
+          backgroundColor: const Color(0xFF4CAF50),
+        ));
+        break;
+      case PurchaseResult.cancelled:
+        break;
+      case PurchaseResult.error:
+      case PurchaseResult.unavailable:
+        messenger.showSnackBar(SnackBar(
+          content: Text(context.tr('unlockAllError')),
+          backgroundColor: Colors.redAccent,
+        ));
+        break;
+      case PurchaseResult.pending:
+        break;
+    }
+  }
+
+  Future<void> _buy() async {
+    setState(() => _busy = true);
+    final result =
+        await ref.read(purchaseServiceProvider).buyUnlockAllSkins();
+    // A `pending` result means the store UI took over; the final outcome
+    // arrives via the results stream. Any other immediate result is terminal.
+    if (result != PurchaseResult.pending) _onResult(result);
+  }
+
+  Future<void> _restore() async {
+    await ref.read(purchaseServiceProvider).restorePurchases();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.tr('restoreRequested'))),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final service = ref.read(purchaseServiceProvider);
+    // Hide entirely once already owned or when IAP isn't available here.
+    if (widget.user.allSkinsUnlocked) return const SizedBox.shrink();
+    if (!service.isSupported) return const SizedBox.shrink();
+
+    final price = service.unlockAllPrice;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF6C3CE1), Color(0xFF3A1C71)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        border: Border.all(color: const Color(0xFFB39DDB), width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('✨', style: TextStyle(fontSize: 20)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  context.tr('unlockAllTitle'),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            context.tr('unlockAllDesc'),
+            style: const TextStyle(color: Colors.white70, fontSize: 12),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: _busy ? null : _buy,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: const Color(0xFF3A1C71),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: _busy
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(
+                          price != null
+                              ? context
+                                  .trArgs('unlockAllCta', {'price': price})
+                              : context.tr('unlockAllCtaNoPrice'),
+                          style:
+                              const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: _busy ? null : _restore,
+              child: Text(
+                context.tr('restorePurchases'),
+                style: const TextStyle(color: Colors.white70, fontSize: 12),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Skin shop — shows all skins with lock/price overlay and equip button
 // ---------------------------------------------------------------------------
 class _SkinShop extends ConsumerWidget {
@@ -290,7 +462,8 @@ class _SkinShop extends ConsumerWidget {
       alignment: WrapAlignment.center,
       children: FighterSprite.skinKeys.map((skin) {
         final cost = kSkinCosts[skin] ?? 0;
-        final isOwned = cost == 0 || user.unlockedSkins.contains(skin);
+        final isOwned =
+            cost == 0 || user.allSkinsUnlocked || user.unlockedSkins.contains(skin);
         final isEquipped = skin == user.characterSkin;
         final canAfford = user.coins >= cost;
 

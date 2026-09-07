@@ -280,25 +280,45 @@ class UserRepository {
     required String leagueId,
     required int hours,
     required int cost,
+    bool viaAd = false,
   }) async {
     bool ok = false;
+    final todayStr = DateTime.now().toIso8601String().substring(0, 10);
     await _db.runTransaction((tx) async {
       final ref = _users.doc(uid);
       final snap = await tx.get(ref);
       if (!snap.exists) return;
       final user = UserModel.fromFirestore(snap.data()!, snap.id);
-      if (user.coins < cost) return;
+      if (viaAd) {
+        // Free ad shield is limited to once per day.
+        if (user.lastShieldAdDate == todayStr) return;
+      } else if (user.coins < cost) {
+        return;
+      }
       final expiry = DateTime.now()
           .add(Duration(hours: hours))
           .toUtc()
           .toIso8601String();
-      tx.update(ref, {
-        'coins': user.coins - cost,
+      final update = <String, dynamic>{
         'shieldByLeague.$leagueId': expiry,
-      });
+      };
+      if (viaAd) {
+        update['lastShieldAdDate'] = todayStr;
+      } else {
+        update['coins'] = user.coins - cost;
+      }
+      tx.update(ref, update);
       ok = true;
     });
     return ok;
+  }
+
+  /// Whether [uid] can still claim the free ad shield today.
+  Future<bool> canClaimShieldAd(String uid) async {
+    final user = await getUser(uid);
+    if (user == null) return false;
+    final todayStr = DateTime.now().toIso8601String().substring(0, 10);
+    return user.lastShieldAdDate != todayStr;
   }
 
   /// Check whether [uid] has an active shield in [leagueId].

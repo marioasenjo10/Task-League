@@ -314,6 +314,8 @@ const _en = <String, String>{
   'unlockFightersWithCoins': 'Unlock new fighters with 🪙 coins',
   'profileCoins': 'coins',
   'profileToday': 'today',
+  'watchAd': 'Watch ad',
+  'shieldAdUsed': 'Used today',
   'watchAdForCoins': 'Watch ad +{coins} coins ({left} left)',
   'watchAdCapReached': 'No more ad rewards today',
   'watchAdNotReady': 'No ad available right now - try again shortly.',
@@ -324,6 +326,16 @@ const _en = <String, String>{
   'skinEquipped': 'Equipped',
   'skinOwned': 'Owned',
   'skinUnlocked': '{skin} unlocked! 🎉',
+  // Unlock-all-skins in-app purchase
+  'unlockAllTitle': 'Unlock all fighters',
+  'unlockAllDesc':
+      'Get every fighter skin — current and future — with a single one-time purchase.',
+  'unlockAllCta': 'Unlock all · {price}',
+  'unlockAllCtaNoPrice': 'Unlock all fighters',
+  'unlockAllSuccess': 'All fighters unlocked! 🎉',
+  'unlockAllError': 'Purchase could not be completed. Please try again.',
+  'restorePurchases': 'Restore purchases',
+  'restoreRequested': 'Checking for previous purchases…',
   // Skin names
   'skin_warrior': 'Warrior',
   'skin_mage': 'Mage',
@@ -697,6 +709,8 @@ const _es = <String, String>{
   'profileToday': 'hoy',
   'watchAdForCoins': 'Ver anuncio +{coins} monedas ({left} rest.)',
   'watchAdCapReached': 'No hay más recompensas hoy',
+  'watchAd': 'Ver anuncio',
+  'shieldAdUsed': 'Usado hoy',
   'watchAdBonusCoin': 'Ver anuncio · +1 🪙 extra',
   'bonusCoinAdded': '¡+1 🪙 extra añadida!',
   'watchAdNotReady':
@@ -706,6 +720,16 @@ const _es = <String, String>{
   'skinEquipped': 'Equipado',
   'skinOwned': 'Comprado',
   'skinUnlocked': '¡{skin} desbloqueado! 🎉',
+  // Compra: desbloquear todas las skins
+  'unlockAllTitle': 'Desbloquea todos los luchadores',
+  'unlockAllDesc':
+      'Consigue todas las skins de luchador — actuales y futuras — con un único pago.',
+  'unlockAllCta': 'Desbloquear todo · {price}',
+  'unlockAllCtaNoPrice': 'Desbloquear todos los luchadores',
+  'unlockAllSuccess': '¡Todos los luchadores desbloqueados! 🎉',
+  'unlockAllError': 'No se pudo completar la compra. Inténtalo de nuevo.',
+  'restorePurchases': 'Restaurar compras',
+  'restoreRequested': 'Buscando compras anteriores…',
   // Skin names
   'skin_warrior': 'Guerrero',
   'skin_mage': 'Mago',
