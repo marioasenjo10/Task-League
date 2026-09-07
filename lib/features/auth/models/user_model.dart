@@ -30,8 +30,8 @@ const Map<String, int> kSkinCosts = {
 
 /// Shield options: display label → {hours, cost}.
 const List<Map<String, dynamic>> kShieldOptions = [
-  {'label': '4h',  'hours': 4,  'cost': 10},
-  {'label': '8h',  'hours': 8,  'cost': 18},
+  {'label': '8h',  'hours': 8,  'cost': 10},
+  {'label': '16h', 'hours': 16, 'cost': 18},
   {'label': '24h', 'hours': 24, 'cost': 40},
 ];
 
