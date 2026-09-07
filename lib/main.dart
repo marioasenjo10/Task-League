@@ -12,6 +12,7 @@ import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/l10n/app_localizations.dart';
 import 'core/l10n/locale_provider.dart';
+import 'core/l10n/language_selection_screen.dart';
 import 'core/config/app_config.dart';
 import 'core/services/consent_service.dart';
 import 'core/widgets/maintenance_screen.dart';
@@ -78,6 +79,13 @@ class FightTaskApp extends ConsumerWidget {
       // to true in Firestore, every user sees the maintenance screen instead of
       // the app — including the login screen.
       builder: (context, child) {
+        // First-launch language gate: if no language has been chosen yet, show
+        // a full-screen picker before anything else so even the login appears
+        // in the selected language.
+        final languageChosen = ref.watch(languageChosenProvider);
+        if (!languageChosen) {
+          return const LanguageSelectionScreen();
+        }
         final config = ref.watch(appConfigProvider).valueOrNull;
         if (config?.maintenanceMode == true) {
           return MaintenanceScreen(

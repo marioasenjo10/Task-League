@@ -14,6 +14,10 @@ class AdsService {
   RewardedAd? _rewarded;
   bool _loading = false;
 
+  /// Waiters that are blocked in [showRewarded] until the in-flight load
+  /// finishes. Each completer receives whether an ad became available.
+  final List<Completer<bool>> _loadWaiters = [];
+
   // ── Ad unit ids ───────────────────────────────────────────────────────────
   // Google's public TEST rewarded ids — safe to use during development.
   static const String _androidRewardedTest =
@@ -67,13 +71,41 @@ class AdsService {
         onAdLoaded: (ad) {
           _rewarded = ad;
           _loading = false;
+          _resolveLoadWaiters(true);
         },
         onAdFailedToLoad: (error) {
           _rewarded = null;
           _loading = false;
           debugPrint('Rewarded ad failed to load: $error');
+          _resolveLoadWaiters(false);
         },
       ),
+    );
+  }
+
+  /// Completes everyone waiting on the current load with [available].
+  void _resolveLoadWaiters(bool available) {
+    if (_loadWaiters.isEmpty) return;
+    final waiters = List<Completer<bool>>.from(_loadWaiters);
+    _loadWaiters.clear();
+    for (final w in waiters) {
+      if (!w.isCompleted) w.complete(available);
+    }
+  }
+
+  /// Waits until the in-flight load finishes (or a short timeout elapses),
+  /// returning whether an ad became available. Used so a freshly opened screen
+  /// (e.g. the arena battle result) can still show an ad even if it wasn't
+  /// preloaded a few seconds earlier.
+  Future<bool> _awaitLoad() {
+    final completer = Completer<bool>();
+    _loadWaiters.add(completer);
+    return completer.future.timeout(
+      const Duration(seconds: 6),
+      onTimeout: () {
+        _loadWaiters.remove(completer);
+        return _rewarded != null;
+      },
     );
   }
 
@@ -92,8 +124,13 @@ class AdsService {
     }
     final ad = _rewarded;
     if (ad == null) {
+      // Not preloaded yet (common when a screen offers the ad only moments
+      // after opening, e.g. the arena battle result). Kick off a load and
+      // wait for it instead of failing immediately.
       loadRewarded();
-      return false;
+      final available = await _awaitLoad();
+      if (!available || _rewarded == null) return false;
+      return showRewarded();
     }
     _rewarded = null;
 
@@ -122,6 +159,7 @@ class AdsService {
   }
 
   void dispose() {
+    _resolveLoadWaiters(false);
     _rewarded?.dispose();
     _rewarded = null;
   }

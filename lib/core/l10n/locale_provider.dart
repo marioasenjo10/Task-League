@@ -48,3 +48,15 @@ final localeProvider = StateNotifierProvider<LocaleNotifier, Locale>(
     return LocaleNotifier(prefs);
   },
 );
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Whether the user has already picked a language. On the very first launch
+// (nothing saved) this is false, so the app shows a full-screen language
+// selector before anything else — friendlier for older users than a small
+// EN/ES toggle in the corner. Once a language is chosen it stays chosen.
+// ─────────────────────────────────────────────────────────────────────────────
+
+final languageChosenProvider = StateProvider<bool>((ref) {
+  final prefs = ref.watch(sharedPreferencesProvider);
+  return prefs.getString(_kLocaleKey) != null;
+});

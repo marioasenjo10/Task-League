@@ -34,8 +34,8 @@ class LeagueScreen extends ConsumerWidget {
             if (league == null) return const Text('League');
             final memberCount = league.memberIds.length;
             final typeLabel = league.competitionType == CompetitionType.weekly
-                ? 'Weekly'
-                : 'Monthly';
+                ? context.tr('repeatWeekly')
+                : context.tr('repeatMonthly');
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
@@ -48,7 +48,7 @@ class LeagueScreen extends ConsumerWidget {
                   ),
                 ),
                 Text(
-                  '$memberCount ${memberCount == 1 ? 'fighter' : 'fighters'} · $typeLabel',
+                  '$memberCount ${memberCount == 1 ? context.tr('fighter') : context.tr('fighters')} · $typeLabel',
                   style: const TextStyle(fontSize: 11, color: Colors.white54),
                 ),
               ],
@@ -272,7 +272,7 @@ class _NavGrid extends StatelessWidget {
             Expanded(
               child: _NavTile(
                 icon: Icons.sports_kabaddi,
-                label: 'Arena',
+                label: context.tr('arena'),
                 onTap: () => context.push('/league/$leagueId/arena'),
                 badge: _AttacksBadge(
                   count: attacksLeft,
@@ -599,9 +599,9 @@ class _NotificationsSheet extends ConsumerWidget {
                       size: 20,
                     ),
                     const SizedBox(width: 8),
-                    const Text(
-                      'Notifications',
-                      style: TextStyle(
+                    Text(
+                      context.tr('notifications'),
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -614,9 +614,9 @@ class _NotificationsSheet extends ConsumerWidget {
                               onPressed: () => ref
                                   .read(notifSeenProvider(leagueId).notifier)
                                   .markSeen(),
-                              child: const Text(
-                                'Mark all read',
-                                style: TextStyle(
+                              child: Text(
+                                context.tr('markAllRead'),
+                                style: const TextStyle(
                                   color: Color(0xFFB39DDB),
                                   fontSize: 11,
                                 ),
@@ -645,19 +645,20 @@ class _NotificationsSheet extends ConsumerWidget {
               ),
               data: (events) {
                 if (events.isEmpty) {
-                  return const Center(
+                  return Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
+                        const Icon(
                           Icons.shield_outlined,
                           size: 48,
                           color: Colors.white24,
                         ),
-                        SizedBox(height: 12),
+                        const SizedBox(height: 12),
                         Text(
-                          'No attacks received yet',
-                          style: TextStyle(color: Colors.white54, fontSize: 13),
+                          context.tr('noAttacksReceived'),
+                          style: const TextStyle(
+                              color: Colors.white54, fontSize: 13),
                         ),
                       ],
                     ),
@@ -671,7 +672,7 @@ class _NotificationsSheet extends ConsumerWidget {
                     final e = events[i];
                     final isNew =
                         seenAt == null || e.completedAt.isAfter(seenAt);
-                    final timeAgo = _timeAgo(e.completedAt);
+                    final timeAgo = _timeAgo(e.completedAt, context);
                     return Container(
                       margin: const EdgeInsets.only(bottom: 8),
                       padding: const EdgeInsets.symmetric(
@@ -708,7 +709,7 @@ class _NotificationsSheet extends ConsumerWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'You were attacked!',
+                                  context.tr('youWereAttacked'),
                                   style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.bold,
@@ -764,12 +765,16 @@ class _NotificationsSheet extends ConsumerWidget {
     );
   }
 
-  String _timeAgo(DateTime dt) {
+  String _timeAgo(DateTime dt, BuildContext context) {
     final diff = DateTime.now().difference(dt);
-    if (diff.inMinutes < 1) return 'just now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    if (diff.inHours < 24) return '${diff.inHours}h ago';
-    return '${diff.inDays}d ago';
+    if (diff.inMinutes < 1) return context.tr('timeJustNow');
+    if (diff.inMinutes < 60) {
+      return context.trArgs('timeMinutesAgo', {'n': '${diff.inMinutes}'});
+    }
+    if (diff.inHours < 24) {
+      return context.trArgs('timeHoursAgo', {'n': '${diff.inHours}'});
+    }
+    return context.trArgs('timeDaysAgo', {'n': '${diff.inDays}'});
   }
 }
 

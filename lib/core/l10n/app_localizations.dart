@@ -289,6 +289,16 @@ const _en = <String, String>{
   'attacking': 'Attacking!',
   'hit': 'Hit!',
 
+  // Notifications
+  'notifications': 'Notifications',
+  'markAllRead': 'Mark all read',
+  'noAttacksReceived': 'No attacks received yet',
+  'youWereAttacked': 'You were attacked!',
+  'timeJustNow': 'just now',
+  'timeMinutesAgo': '{n}m ago',
+  'timeHoursAgo': '{n}h ago',
+  'timeDaysAgo': '{n}d ago',
+
   // Profile
   'profile': 'Profile',
   'signOut': 'Sign Out',
@@ -310,6 +320,21 @@ const _en = <String, String>{
   'watchAdRewarded': '+{coins} coins earned!',
   'watchAdBonusCoin': 'Watch ad · +1 🪙 bonus',
   'bonusCoinAdded': '+1 🪙 bonus added!',
+  'attacksToday': '{used}/{max} attacks today',
+  'skinEquipped': 'Equipped',
+  'skinOwned': 'Owned',
+  'skinUnlocked': '{skin} unlocked! 🎉',
+  // Skin names
+  'skin_warrior': 'Warrior',
+  'skin_mage': 'Mage',
+  'skin_ninja': 'Ninja',
+  'skin_masked_fighter': 'Masked Fighter',
+  'skin_masked_woman': 'Masked Woman',
+  'skin_viking': 'Viking',
+  'skin_boxingtiger': 'Boxing Tiger',
+  'skin_death': 'Death',
+  'skin_doctor': 'Doctor',
+  'skin_thunderman': 'Thunderman',
 
   // Statistics
   'statistics': 'Statistics',
@@ -645,6 +670,16 @@ const _es = <String, String>{
   'attacking': '¡Atacando!',
   'hit': '¡Golpe!',
 
+  // Notifications
+  'notifications': 'Notificaciones',
+  'markAllRead': 'Marcar todo leído',
+  'noAttacksReceived': 'Aún no has recibido ataques',
+  'youWereAttacked': '¡Te han atacado!',
+  'timeJustNow': 'ahora mismo',
+  'timeMinutesAgo': 'hace {n}m',
+  'timeHoursAgo': 'hace {n}h',
+  'timeDaysAgo': 'hace {n}d',
+
   // Profile
   'profile': 'Perfil',
   'signOut': 'Cerrar sesión',
@@ -667,6 +702,21 @@ const _es = <String, String>{
   'watchAdNotReady':
       'No hay anuncio disponible ahora - inténtalo en un momento.',
   'watchAdRewarded': '¡+{coins} monedas conseguidas!',
+  'attacksToday': '{used}/{max} ataques hoy',
+  'skinEquipped': 'Equipado',
+  'skinOwned': 'Comprado',
+  'skinUnlocked': '¡{skin} desbloqueado! 🎉',
+  // Skin names
+  'skin_warrior': 'Guerrero',
+  'skin_mage': 'Mago',
+  'skin_ninja': 'Ninja',
+  'skin_masked_fighter': 'Luchador Enmascarado',
+  'skin_masked_woman': 'Luchadora Enmascarada',
+  'skin_viking': 'Vikingo',
+  'skin_boxingtiger': 'Tigre Boxeador',
+  'skin_death': 'La Muerte',
+  'skin_doctor': 'Doctor',
+  'skin_thunderman': 'Hombre Trueno',
 
   // Statistics
   'statistics': 'Estadísticas',

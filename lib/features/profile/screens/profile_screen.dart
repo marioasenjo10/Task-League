@@ -289,7 +289,6 @@ class _SkinShop extends ConsumerWidget {
       runSpacing: 12,
       alignment: WrapAlignment.center,
       children: FighterSprite.skinKeys.map((skin) {
-        final def = FighterSprite.skins[skin]!;
         final cost = kSkinCosts[skin] ?? 0;
         final isOwned = cost == 0 || user.unlockedSkins.contains(skin);
         final isEquipped = skin == user.characterSkin;
@@ -309,7 +308,8 @@ class _SkinShop extends ConsumerWidget {
                       if (ok && context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('${def.label} unlocked! 🎉'),
+                            content: Text(context.trArgs('skinUnlocked',
+                                {'skin': context.tr('skin_$skin')})),
                             backgroundColor: const Color(0xFF4CAF50),
                             duration: const Duration(seconds: 2),
                           ),
@@ -347,7 +347,7 @@ class _SkinShop extends ConsumerWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      def.label,
+                      context.tr('skin_$skin'),
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 10,
@@ -365,11 +365,11 @@ class _SkinShop extends ConsumerWidget {
                     // Status row
                     if (isEquipped)
                       _StatusBadge(
-                          label: 'Equipped',
+                          label: context.tr('skinEquipped'),
                           color: const Color(0xFF6C3CE1))
                     else if (isOwned)
                       _StatusBadge(
-                          label: 'Owned',
+                          label: context.tr('skinOwned'),
                           color: Colors.white24)
                     else
                       _PriceBadge(cost: cost, canAfford: canAfford),
@@ -624,7 +624,8 @@ class _DailyAttacksChip extends StatelessWidget {
           const Text('⚔️', style: TextStyle(fontSize: 12)),
           const SizedBox(width: 4),
           Text(
-            '$attacks/$kMaxDailyAttacks attacks today',
+            context.trArgs('attacksToday',
+                {'used': '$attacks', 'max': '$kMaxDailyAttacks'}),
             style: TextStyle(
               fontSize: 11,
               color: remaining > 0

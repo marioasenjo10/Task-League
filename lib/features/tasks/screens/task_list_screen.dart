@@ -301,6 +301,11 @@ class _LeagueFilterBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final notifier = ref.read(leagueTaskFilterProvider(leagueId).notifier);
+    // Own tasks live in the "My Tasks" tab, so the current user is not offered
+    // as an assignee filter here (the league list always excludes them).
+    final currentUid = ref.watch(authStateProvider).valueOrNull?.uid;
+    final assigneeMembers =
+        members.where((m) => m.id != currentUid).toList();
 
     return Container(
       color: const Color(0xFF12122A),
@@ -401,11 +406,11 @@ class _LeagueFilterBar extends ConsumerWidget {
                 ),
               ),
               // Assignee filter — only when showAssigned is on
-              if (filter.showAssigned && members.isNotEmpty) ...[
+              if (filter.showAssigned && assigneeMembers.isNotEmpty) ...[
                 const SizedBox(width: 8),
                 Expanded(
                   child: _AssigneeFilterChip(
-                    members: members,
+                    members: assigneeMembers,
                     selectedId: filter.assigneeId,
                     onSelected: notifier.setAssignee,
                   ),
