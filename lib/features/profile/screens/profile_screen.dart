@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -175,8 +176,13 @@ class _ProfileContent extends ConsumerWidget {
                     color: Colors.white38,
                   )),
           const SizedBox(height: 12),
-          _UnlockAllSkinsCard(user: user),
-          const SizedBox(height: 12),
+          // IAP is mobile-only; never mount the premium card on web/desktop,
+          // where InAppPurchase.instance is unsupported and touching it during
+          // initState crashes the whole screen.
+          if (!kIsWeb) ...[
+            _UnlockAllSkinsCard(user: user),
+            const SizedBox(height: 12),
+          ],
           _SkinShop(user: user),
           const SizedBox(height: 32),
 
