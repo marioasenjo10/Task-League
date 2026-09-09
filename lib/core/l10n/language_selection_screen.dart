@@ -148,6 +148,7 @@ class _SpainFlag extends StatelessWidget {
   Widget build(BuildContext context) {
     // Simplified Spanish flag: red / yellow (double height) / red bands.
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: const [
         Expanded(flex: 1, child: ColoredBox(color: Color(0xFFAA151B))),
         Expanded(flex: 2, child: ColoredBox(color: Color(0xFFF1BF00))),
