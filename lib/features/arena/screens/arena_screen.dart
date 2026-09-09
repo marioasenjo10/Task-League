@@ -3945,7 +3945,8 @@ class _ArenaBattleDialogState extends ConsumerState<_ArenaBattleDialog>
             ],
             const SizedBox(height: 24),
 
-            SizedBox(
+            ClipRect(
+              child: SizedBox(
               height: 140,
               child: _isSolo
                   ? Center(
@@ -4124,6 +4125,7 @@ class _ArenaBattleDialogState extends ConsumerState<_ArenaBattleDialog>
                         ),
                       ],
                     ),
+            ),
             ),
 
             const SizedBox(height: 24),
