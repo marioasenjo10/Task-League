@@ -4007,14 +4007,18 @@ class _ArenaBattleDialogState extends ConsumerState<_ArenaBattleDialog>
                               ),
                             ),
                             const SizedBox(height: 4),
-                            Text(
-                              attackerName,
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
+                            SizedBox(
+                              width: 90,
+                              child: Text(
+                                attackerName,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              overflow: TextOverflow.ellipsis,
                             ),
                           ],
                         ),
@@ -4112,14 +4116,18 @@ class _ArenaBattleDialogState extends ConsumerState<_ArenaBattleDialog>
                               },
                             ),
                             const SizedBox(height: 4),
-                            Text(
-                              targetName ?? '???',
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
+                            SizedBox(
+                              width: 90,
+                              child: Text(
+                                targetName ?? '???',
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              overflow: TextOverflow.ellipsis,
                             ),
                           ],
                         ),
