@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/league_providers.dart';
@@ -26,39 +27,20 @@ class LeagueScreen extends ConsumerWidget {
     final currentUser = ref.watch(currentUserProvider).valueOrNull;
     final unseenAsync = ref.watch(unseenAttackCountProvider(leagueId));
     final unseenCount = unseenAsync.valueOrNull ?? 0;
+    final inviteCode = leagueAsync.valueOrNull?.effectiveInviteCode;
 
     return Scaffold(
       appBar: AppBar(
-        title: leagueAsync.maybeWhen(
-          data: (league) {
-            if (league == null) return const Text('League');
-            final memberCount = league.memberIds.length;
-            final typeLabel = league.competitionType == CompetitionType.weekly
-                ? context.tr('repeatWeekly')
-                : context.tr('repeatMonthly');
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  league.name,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  '$memberCount ${memberCount == 1 ? context.tr('fighter') : context.tr('fighters')} · $typeLabel',
-                  style: const TextStyle(fontSize: 11, color: Colors.white54),
-                ),
-              ],
-            );
-          },
-          orElse: () => const Text('League'),
-        ),
         actions: [
           // ── Coins chip ──────────────────────────────────────────────
           if (currentUser != null) CoinsChip(coins: currentUser.coins),
+          // ── Invite / share code ─────────────────────────────────────
+          if (inviteCode != null && inviteCode.isNotEmpty)
+            IconButton(
+              tooltip: context.tr('inviteToLeague'),
+              icon: const Icon(Icons.person_add_alt_1),
+              onPressed: () => _showInviteDialog(context, inviteCode),
+            ),
           // ── Notification bell ───────────────────────────────────────
           IconButton(
             tooltip: 'Notifications',
@@ -107,6 +89,72 @@ class LeagueScreen extends ConsumerWidget {
         data: (league) => _MobileFrame(
           child: _LeagueBody(league: league, leagueId: leagueId),
         ),
+      ),
+    );
+  }
+
+  void _showInviteDialog(BuildContext context, String inviteCode) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A2E),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: Row(
+          children: [
+            const Icon(Icons.person_add_alt_1, color: Color(0xFF6C3CE1)),
+            const SizedBox(width: 10),
+            Expanded(child: Text(ctx.tr('inviteToLeague'))),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              ctx.tr('inviteShareText'),
+              style: const TextStyle(color: Colors.white70, fontSize: 13),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              decoration: BoxDecoration(
+                color: Colors.white.withAlpha(12),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.white.withAlpha(24)),
+              ),
+              child: Center(
+                child: Text(
+                  inviteCode,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 6,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton.icon(
+            icon: const Icon(Icons.copy, size: 18),
+            label: Text(ctx.tr('copyCode')),
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: inviteCode));
+              if (!ctx.mounted) return;
+              Navigator.of(ctx).pop();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(context.tr('inviteCopied')),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+          ),
+        ],
       ),
     );
   }
@@ -207,6 +255,9 @@ class _LeagueBodyState extends ConsumerState<_LeagueBody> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // ── League header (name + summary) ──────────────────────────────
+          if (league != null) _LeagueHeader(league: league),
+
           // ── Period results banner ───────────────────────────────────────
           if (league != null)
             _LeaguePeriodResultsBanner(
@@ -225,6 +276,66 @@ class _LeagueBodyState extends ConsumerState<_LeagueBody> {
 
           // ── My tasks preview ────────────────────────────────────────────
           _MyTasksPreview(leagueId: leagueId),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// League header — big name + summary line, gives the screen breathing room
+// ---------------------------------------------------------------------------
+
+class _LeagueHeader extends StatelessWidget {
+  final LeagueModel league;
+  const _LeagueHeader({required this.league});
+
+  @override
+  Widget build(BuildContext context) {
+    final memberCount = league.memberIds.length;
+    final typeLabel = league.competitionType == CompetitionType.weekly
+        ? context.tr('repeatWeekly')
+        : context.tr('repeatMonthly');
+    final memberLabel =
+        memberCount == 1 ? context.tr('fighter') : context.tr('fighters');
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 8, 4, 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            league.name,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 26,
+              fontWeight: FontWeight.bold,
+              height: 1.15,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              const Icon(Icons.group, size: 14, color: Colors.white38),
+              const SizedBox(width: 5),
+              Text(
+                '$memberCount $memberLabel',
+                style: const TextStyle(color: Colors.white54, fontSize: 12.5),
+              ),
+              const SizedBox(width: 8),
+              const Text('·',
+                  style: TextStyle(color: Colors.white38, fontSize: 12.5)),
+              const SizedBox(width: 8),
+              Icon(Icons.event_repeat, size: 14, color: Colors.white38),
+              const SizedBox(width: 5),
+              Text(
+                typeLabel,
+                style: const TextStyle(color: Colors.white54, fontSize: 12.5),
+              ),
+            ],
+          ),
         ],
       ),
     );

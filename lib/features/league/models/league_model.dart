@@ -45,6 +45,14 @@ class LeagueModel extends Equatable {
   final DateTime createdAt;
   final String? inviteCode;
 
+  /// The invite code to display/share. Falls back to a deterministic code
+  /// derived from the league id for older leagues created before invite
+  /// codes were stored. This matches the code generated in [createLeague].
+  String get effectiveInviteCode =>
+      (inviteCode != null && inviteCode!.isNotEmpty)
+          ? inviteCode!
+          : id.substring(0, 6).toUpperCase();
+
   const LeagueModel({
     required this.id,
     required this.name,
@@ -86,8 +94,7 @@ class LeagueModel extends Equatable {
     CompetitionType? competitionType,
     DateTime? createdAt,
     String? inviteCode,
-  }) {
-    return LeagueModel(
+  }) {    return LeagueModel(
       id: id ?? this.id,
       name: name ?? this.name,
       ownerId: ownerId ?? this.ownerId,

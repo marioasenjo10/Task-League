@@ -130,10 +130,12 @@ class _CreateTabState extends ConsumerState<_CreateTab> {
             TextFormField(
               controller: _nameController,
               autofocus: true,
+              maxLength: 24,
               decoration: const InputDecoration(
                 labelText: 'League name',
                 prefixIcon: Icon(Icons.shield),
                 hintText: 'e.g. Thunder Squad',
+                counterText: '',
               ),
               textInputAction: TextInputAction.done,
               onFieldSubmitted: (_) => _submit(),

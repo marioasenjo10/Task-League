@@ -41,7 +41,15 @@ class LeagueRepository {
   Stream<LeagueModel?> watchLeague(String id) {
     return _leagues.doc(id).snapshots().map((doc) {
       if (!doc.exists || doc.data() == null) return null;
-      return LeagueModel.fromFirestore(doc.data()!, doc.id);
+      final league = LeagueModel.fromFirestore(doc.data()!, doc.id);
+      // Backfill invite code for older leagues that were created before
+      // invite codes were persisted, so they can be shared and joined.
+      if (league.inviteCode == null || league.inviteCode!.isEmpty) {
+        final code = id.substring(0, 6).toUpperCase();
+        _leagues.doc(id).update({'inviteCode': code});
+        return league.copyWith(inviteCode: code);
+      }
+      return league;
     });
   }
 
